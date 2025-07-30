@@ -67,13 +67,15 @@
     let editId = null;
 
     // Restrict access (Only admin email)
-    const adminEmail = "youradmin@gmail.com"; // Change this to your email
+    const ADMIN_EMAIL = "ubaidji07@gmail.com"; // Your email
+
     onAuthStateChanged(auth, (user) => {
-      if (!user || user.email !== adminEmail) {
-        alert("Access Denied! Only admin can view this page.");
+      if (!user || user.email !== ADMIN_EMAIL) {
+        alert("Access Denied! Only admin can access");
         window.location.href = "auth.html";
       }
     });
+    
 
     // Modal functions
     window.openModal = (data=null, id=null) => {
