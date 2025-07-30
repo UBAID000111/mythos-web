@@ -66,18 +66,18 @@
     const modal = document.getElementById("addModal");
     let editId = null;
 
-    // Restrict access (Only admin email)
-    const ADMIN_EMAIL = "ubaidji07@gmail.com"; // Your email
+    // 🔹 Set your admin email here
+    const ADMIN_EMAIL = "ubaidji07@gmail.com";
 
+    // 🔹 Auth Guard (Only admin can access)
     onAuthStateChanged(auth, (user) => {
       if (!user || user.email !== ADMIN_EMAIL) {
         alert("Access Denied! Only admin can access");
         window.location.href = "auth.html";
       }
     });
-    
 
-    // Modal functions
+    // 🔹 Modal functions
     window.openModal = (data=null, id=null) => {
       document.getElementById("modalTitle").innerText = data ? "Edit Product" : "Add New Product";
       editId = id;
@@ -97,7 +97,7 @@
 
     window.closeModal = () => modal.style.display = "none";
 
-    // Save Product (Add / Edit)
+    // 🔹 Save Product (Add / Edit)
     window.saveProduct = async () => {
       const name = document.getElementById("name").value;
       const price = document.getElementById("price").value;
@@ -116,7 +116,7 @@
       location.reload();
     };
 
-    // Load Products
+    // 🔹 Load Products
     async function loadProducts() {
       const snapshot = await getDocs(collection(db, "products"));
       productList.innerHTML = "";
@@ -134,6 +134,7 @@
       });
     }
 
+    // 🔹 Delete Product
     window.deleteProduct = async (id) => {
       await deleteDoc(doc(db, "products", id));
       alert("Deleted!");
