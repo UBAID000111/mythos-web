@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mythos Arts - Home</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Badge Styling */
+    .badge {
+      background: red;
+      color: #fff;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 50%;
+      position: absolute;
+      top: -6px;
+      right: -8px;
+      display: none; /* hidden when 0 */
+    }
+    .icon-btn {
+      position: relative;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    .icon-btn img {
+      width: 28px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <img src="https://live.staticflickr.com/65535/54688874864_1e7c7e544d_q.jpg">
+      <h2>Mythos Arts</h2>
+    </div>
+    <div class="header-icons">
+      <button class="btn" id="authBtn">Login</button>
+      <button class="icon-btn" onclick="window.location.href='wishlist.html'">
+        <img src="https://img.icons8.com/ios-filled/50/like.png">
+        <span class="badge" id="wishlistCount"></span>
+      </button>
+      <button class="icon-btn" onclick="window.location.href='cart.html'">
+        <img src="https://img.icons8.com/ios-filled/50/shopping-cart.png">
+        <span class="badge" id="cartCount"></span>
+      </button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-box">
+      <h2>Custom Designed Premium T-Shirts</h2>
+      <button class="btn" onclick="document.getElementById('productGrid').scrollIntoView({behavior:'smooth'})">Shop Now</button>
+    </div>
+  </section>
+
+  <div class="products" id="productGrid"></div>
+
+  <footer>&copy; 2025 Mythos Arts</footer>
+
+  <script type="module">
+    import { auth } from "./firebase.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+    const products = [
+      {id:1, name:"Anime Shirt", img:"https://live.staticflickr.com/65535/54688856594_a138e76547_b.jpg", price:499},
+      {id:2, name:"Matte Shirt", img:"https://i.imgur.com/fThxrbD.png", price:599},
+      {id:3, name:"Streetwear Shirt", img:"https://i.imgur.com/N3Xt4bn.png", price:699}
+    ];
+
+    // Render products
+    const grid = document.getElementById("productGrid");
+    products.forEach(p=>{
+      grid.innerHTML += `
+        <div class="product-card" onclick="window.location.href='product.html?id=${p.id}'">
+          <div class="image-container"><img src="${p.img}"></div>
+          <h4>${p.name} - ₹${p.price}</h4>
+        </div>`;
+    });
+
+    // Update Login/Logout button
+    const authBtn = document.getElementById("authBtn");
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        authBtn.innerText = "Logout (" + user.email.split('@')[0] + ")";
+        authBtn.onclick = async () => { await signOut(auth); window.location.reload(); };
+      } else {
+        authBtn.innerText = "Login";
+        authBtn.onclick = () => window.location.href = "auth.html";
+      }
+    });
+
+    // Wishlist & Cart counts from localStorage
+    const wishlistCount = document.getElementById("wishlistCount");
+    const cartCount = document.getElementById("cartCount");
+
+    function updateCounts() {
+      const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      wishlistCount.style.display = wishlist.length > 0 ? "inline-block" : "none";
+      cartCount.style.display = cart.length > 0 ? "inline-block" : "none";
+      wishlistCount.innerText = wishlist.length;
+      cartCount.innerText = cart.length;
+    }
+
+    // Update on page load
+    updateCounts();
+
+    // Update badges when localStorage changes (if same domain multiple pages)
+    window.addEventListener("storage", updateCounts);
+  </script>
+</body>
+</html>

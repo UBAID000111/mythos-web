@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Wishlist - Mythos Arts</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .wishlist-container {max-width:800px; margin:80px auto; padding:1rem;}
+    .list-item {
+      display:flex; align-items:center; justify-content:space-between;
+      background:#f8f9fc; padding:0.7rem; margin-bottom:0.7rem; border-radius:8px;
+    }
+    .list-item img {
+      width:60px; height:60px; object-fit:cover; border-radius:8px;
+    }
+    .list-info {flex:1; margin-left:12px;}
+    .list-info h4 {margin:0; font-size:1rem;}
+    .remove-btn {background:#e74c3c; border:none; color:#fff; padding:5px 10px; border-radius:8px; cursor:pointer;}
+    .back-btn {
+      display:inline-block; margin-bottom:1rem; background:#111; color:#fff;
+      padding:8px 12px; border-radius:8px; text-decoration:none; font-weight:600;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <img src="https://live.staticflickr.com/65535/54688874864_1e7c7e544d_q.jpg">
+      <h2>Mythos Arts</h2>
+    </div>
+    <div class="header-icons">
+      <button id="loginBtn" class="btn" onclick="window.location.href='auth.html'">Login</button>
+      <button id="logoutBtn" class="btn" style="display:none;">Logout</button>
+    </div>
+  </header>
+
+  <!-- Wishlist Content -->
+  <div class="wishlist-container">
+    <a href="index.html" class="back-btn">⬅ Back to Home</a>
+    <h2>Your Wishlist</h2>
+    <div id="wishlistItems"></div>
+  </div>
+
+  <script type="module">
+    import { auth } from "./firebase.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    logoutBtn.addEventListener("click", async () => {
+      await signOut(auth);
+      window.location.href = "auth.html";
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+      } else {
+        loginBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+      }
+    });
+
+    // Wishlist rendering
+    const wishlistItemsEl = document.getElementById("wishlistItems");
+    const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
+
+    function renderWishlist() {
+      wishlistItemsEl.innerHTML = wishlist.length
+        ? ""
+        : "<p>No items in wishlist</p>";
+      wishlist.forEach((item, i) => {
+        wishlistItemsEl.innerHTML += `
+          <div class="list-item">
+            <img src="${item.img}" alt="${item.name}">
+            <div class="list-info"><h4>${item.name}</h4></div>
+            <button class="remove-btn" onclick="removeItem(${i})">X</button>
+          </div>
+        `;
+      });
+    }
+
+    window.removeItem = (i) => {
+      wishlist.splice(i, 1);
+      localStorage.setItem("wishlist", JSON.stringify(wishlist));
+      renderWishlist();
+    };
+
+    renderWishlist();
+  </script>
+</body>
+</html>

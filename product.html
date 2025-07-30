@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Mythos Arts - Product</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .back-btn {
+      background: #444;
+      color: #fff;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <img src="https://live.staticflickr.com/65535/54688874864_1e7c7e544d_q.jpg">
+      <h2>Mythos Arts</h2>
+    </div>
+    <div class="header-icons">
+      <button class="btn" id="authBtn">Login</button>
+      <button class="icon-btn" onclick="window.location.href='wishlist.html'">
+        <img src="https://img.icons8.com/ios-filled/50/like.png"><span class="badge" id="wishlistCount"></span>
+      </button>
+      <button class="icon-btn" onclick="window.location.href='cart.html'">
+        <img src="https://img.icons8.com/ios-filled/50/shopping-cart.png"><span class="badge" id="cartCount"></span>
+      </button>
+    </div>
+  </header>
+
+  <button class="back-btn" onclick="window.location.href='index.html'">⬅ Back</button>
+
+  <div class="page-container">
+    <h2 id="productName"></h2>
+    <img id="productImage" style="width:100%;max-width:300px;display:block;margin:auto;" />
+    <p id="productDesc"></p>
+    <select id="size" style="width:100%;margin:10px 0;">
+      <option value="">Select Size</option>
+      <option>S</option><option>M</option><option>L</option><option>XL</option>
+    </select>
+    <button class="btn" style="width:100%;margin-bottom:8px;" onclick="addToWishlist()">Add to Wishlist</button>
+    <button class="btn" style="width:100%;" onclick="addToCart()">Add to Cart</button>
+  </div>
+
+  <footer>&copy; 2025 Mythos Arts</footer>
+
+  <script type="module">
+    // Firebase auth import
+    import { auth } from "./firebase.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
+    // Auth button logic (Login/Logout)
+    const authBtn = document.getElementById("authBtn");
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        authBtn.innerText = "Logout (" + user.email.split('@')[0] + ")";
+        authBtn.onclick = async () => { await signOut(auth); window.location.reload(); };
+      } else {
+        authBtn.innerText = "Login";
+        authBtn.onclick = () => window.location.href = "auth.html";
+      }
+    });
+
+    // Update badge counts
+    const wishlistCount = document.getElementById("wishlistCount");
+    const cartCount = document.getElementById("cartCount");
+    function updateCounts() {
+      const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      wishlistCount.style.display = wishlist.length ? "inline-block" : "none";
+      cartCount.style.display = cart.length ? "inline-block" : "none";
+      wishlistCount.innerText = wishlist.length;
+      cartCount.innerText = cart.length;
+    }
+    updateCounts();
+    window.addEventListener("storage", updateCounts);
+
+    // Product details logic
+    const products = [
+      {id:1, name:"Anime Shirt", img:"https://live.staticflickr.com/65535/54688856594_a138e76547_b.jpg", desc:"Anime themed shirt", price:499},
+      {id:2, name:"Matte Shirt", img:"https://i.imgur.com/fThxrbD.png", desc:"Smooth matte shirt", price:599},
+      {id:3, name:"Streetwear Shirt", img:"https://i.imgur.com/N3Xt4bn.png", desc:"Urban streetwear shirt", price:699}
+    ];
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const product = products.find(p => p.id == urlParams.get("id"));
+    document.getElementById("productName").innerText = product.name + " - ₹" + product.price;
+    document.getElementById("productImage").src = product.img;
+    document.getElementById("productDesc").innerText = product.desc;
+
+    // Wishlist
+    window.addToWishlist = function() {
+      const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
+      if (!wishlist.find(p => p.id === product.id)) wishlist.push(product);
+      localStorage.setItem("wishlist", JSON.stringify(wishlist));
+      updateCounts();
+      alert("Added to Wishlist");
+    }
+
+    // Cart
+    window.addToCart = function() {
+      const size = document.getElementById("size").value;
+      if (!size) return alert("Select a size");
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      cart.push({...product, size});
+      localStorage.setItem("cart", JSON.stringify(cart));
+      updateCounts();
+      alert("Added to Cart");
+    }
+  </script>
+</body>
+</html>
