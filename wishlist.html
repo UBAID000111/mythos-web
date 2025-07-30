@@ -1,96 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Wishlist - Mythos Arts</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Mythos Arts - Wishlist</title>
   <link rel="stylesheet" href="style.css" />
-  <style>
-    .wishlist-container {max-width:800px; margin:80px auto; padding:1rem;}
-    .list-item {
-      display:flex; align-items:center; justify-content:space-between;
-      background:#f8f9fc; padding:0.7rem; margin-bottom:0.7rem; border-radius:8px;
-    }
-    .list-item img {
-      width:60px; height:60px; object-fit:cover; border-radius:8px;
-    }
-    .list-info {flex:1; margin-left:12px;}
-    .list-info h4 {margin:0; font-size:1rem;}
-    .remove-btn {background:#e74c3c; border:none; color:#fff; padding:5px 10px; border-radius:8px; cursor:pointer;}
-    .back-btn {
-      display:inline-block; margin-bottom:1rem; background:#111; color:#fff;
-      padding:8px 12px; border-radius:8px; text-decoration:none; font-weight:600;
-    }
-  </style>
 </head>
 <body>
-  <!-- Header -->
   <header>
     <div class="logo">
       <img src="https://live.staticflickr.com/65535/54688874864_1e7c7e544d_q.jpg">
       <h2>Mythos Arts</h2>
     </div>
     <div class="header-icons">
-      <button id="loginBtn" class="btn" onclick="window.location.href='auth.html'">Login</button>
-      <button id="logoutBtn" class="btn" style="display:none;">Logout</button>
+      <button class="btn" id="authBtn">Login</button>
+      <button class="icon-btn" onclick="window.location.href='wishlist.html'">
+        <img src="https://img.icons8.com/ios-filled/50/like.png"><span class="badge" id="wishlistCount"></span>
+      </button>
+      <button class="icon-btn" onclick="window.location.href='cart.html'">
+        <img src="https://img.icons8.com/ios-filled/50/shopping-cart.png"><span class="badge" id="cartCount"></span>
+      </button>
     </div>
   </header>
 
-  <!-- Wishlist Content -->
-  <div class="wishlist-container">
-    <a href="index.html" class="back-btn">⬅ Back to Home</a>
-    <h2>Your Wishlist</h2>
-    <div id="wishlistItems"></div>
-  </div>
+  <button class="back-btn" onclick="window.location.href='index.html'">⬅ Back</button>
+
+  <div class="products" id="wishlistContainer"></div>
+
+  <footer>&copy; 2025 Mythos Arts</footer>
 
   <script type="module">
     import { auth } from "./firebase.js";
     import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-    const loginBtn = document.getElementById("loginBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-
-    logoutBtn.addEventListener("click", async () => {
-      await signOut(auth);
-      window.location.href = "auth.html";
-    });
+    const wishlistContainer = document.getElementById("wishlistContainer");
+    const wishlistCount = document.getElementById("wishlistCount");
+    const cartCount = document.getElementById("cartCount");
+    const authBtn = document.getElementById("authBtn");
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        loginBtn.style.display = "none";
-        logoutBtn.style.display = "inline-block";
+        authBtn.innerText = `Logout (${user.email.split('@')[0]})`;
+        authBtn.onclick = async () => { await signOut(auth); window.location.reload(); }
       } else {
-        loginBtn.style.display = "inline-block";
-        logoutBtn.style.display = "none";
+        authBtn.innerText = "Login";
+        authBtn.onclick = () => window.location.href = "auth.html";
       }
     });
 
-    // Wishlist rendering
-    const wishlistItemsEl = document.getElementById("wishlistItems");
-    const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
+    function updateCounts() {
+      const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      wishlistCount.style.display = wishlist.length ? "inline-block" : "none";
+      cartCount.style.display = cart.length ? "inline-block" : "none";
+      wishlistCount.innerText = wishlist.length;
+      cartCount.innerText = cart.length;
+    }
 
-    function renderWishlist() {
-      wishlistItemsEl.innerHTML = wishlist.length
-        ? ""
-        : "<p>No items in wishlist</p>";
-      wishlist.forEach((item, i) => {
-        wishlistItemsEl.innerHTML += `
-          <div class="list-item">
-            <img src="${item.img}" alt="${item.name}">
-            <div class="list-info"><h4>${item.name}</h4></div>
-            <button class="remove-btn" onclick="removeItem(${i})">X</button>
-          </div>
-        `;
+    function loadWishlist() {
+      const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
+      if (!wishlist.length) {
+        wishlistContainer.innerHTML = "<p style='text-align:center;'>No items in Wishlist</p>";
+        return;
+      }
+      wishlistContainer.innerHTML = "";
+      wishlist.forEach((p, index) => {
+        wishlistContainer.innerHTML += `
+          <div class="product-card">
+            <img src="${p.img}" alt="${p.name}">
+            <h4>${p.name}</h4>
+            <button class="btn" onclick="removeItem(${index})">Remove</button>
+          </div>`;
       });
     }
 
-    window.removeItem = (i) => {
-      wishlist.splice(i, 1);
+    window.removeItem = (index) => {
+      const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
+      wishlist.splice(index, 1);
       localStorage.setItem("wishlist", JSON.stringify(wishlist));
-      renderWishlist();
-    };
+      updateCounts();
+      loadWishlist();
+    }
 
-    renderWishlist();
+    updateCounts();
+    loadWishlist();
+    window.addEventListener("storage", () => { updateCounts(); loadWishlist(); });
   </script>
 </body>
 </html>

@@ -3,89 +3,83 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Mythos Arts - Login / Signup</title>
+  <title>Login - Mythos Arts</title>
   <link rel="stylesheet" href="style.css" />
   <style>
     .auth-container {
-      max-width:400px; background:#fff; margin:80px auto; padding:2rem; 
-      box-shadow:0 4px 15px rgba(0,0,0,0.15); border-radius:12px; text-align:center;
+      max-width: 400px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #fff;
+      text-align: center;
+      border-radius: 10px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
     }
-    .auth-container h2 { margin-bottom:1rem; }
     .auth-container input {
-      width:100%; padding:10px; margin:8px 0; border:1px solid #ccc; border-radius:8px;
+      width: 90%;
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
     }
     .auth-container button {
-      width:100%; padding:10px; margin-top:10px; border:none; background:#222; color:#fff; border-radius:8px; font-weight:600;
+      width: 95%;
+      padding: 10px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 6px;
+      background: #27ae60;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
     }
-    .auth-container p {margin-top:1rem; font-size:0.9rem;}
-    .auth-container a {color:#007bff; text-decoration:none; cursor:pointer;}
+    .switch {
+      margin-top: 15px;
+      cursor: pointer;
+      color: #007BFF;
+    }
   </style>
 </head>
 <body>
-  <header>
-    <div class="logo">
-      <img src="https://live.staticflickr.com/65535/54688874864_1e7c7e544d_q.jpg">
-      <h2>Mythos Arts</h2>
-    </div>
-  </header>
-
   <div class="auth-container">
     <h2 id="formTitle">Login</h2>
     <input type="email" id="email" placeholder="Email" />
     <input type="password" id="password" placeholder="Password" />
-    <button id="submitBtn">Login</button>
-    <p id="toggleText">Don't have an account? <a id="toggleLink">Sign up</a></p>
+    <button id="authBtn">Login</button>
+    <p class="switch" id="switchMode">Don't have an account? Sign Up</p>
   </div>
 
   <script type="module">
     import { auth } from "./firebase.js";
-    import { 
-      signInWithEmailAndPassword, 
-      createUserWithEmailAndPassword, 
-      onAuthStateChanged 
-    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { signInWithEmailAndPassword, createUserWithEmailAndPassword } 
+      from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-    const title = document.getElementById("formTitle");
-    const toggleText = document.getElementById("toggleText");
-    const toggleLink = document.getElementById("toggleLink");
-    const submitBtn = document.getElementById("submitBtn");
+    const email = document.getElementById("email");
+    const password = document.getElementById("password");
+    const authBtn = document.getElementById("authBtn");
+    const switchMode = document.getElementById("switchMode");
+    const formTitle = document.getElementById("formTitle");
 
     let isLogin = true;
 
-    toggleLink.addEventListener("click", () => {
+    switchMode.onclick = () => {
       isLogin = !isLogin;
-      title.innerText = isLogin ? "Login" : "Sign Up";
-      submitBtn.innerText = isLogin ? "Login" : "Sign Up";
-      toggleText.innerHTML = isLogin 
-        ? `Don't have an account? <a id="toggleLink">Sign up</a>` 
-        : `Already have an account? <a id="toggleLink">Login</a>`;
-      document.getElementById("toggleLink").addEventListener("click", toggleLink.onclick);
-    });
+      formTitle.innerText = isLogin ? "Login" : "Sign Up";
+      authBtn.innerText = isLogin ? "Login" : "Sign Up";
+      switchMode.innerText = isLogin ? "Don't have an account? Sign Up" : "Already have an account? Login";
+    }
 
-    submitBtn.addEventListener("click", async () => {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      if(!email || !password) return alert("Please enter email and password");
-
-      try {
-        if(isLogin) {
-          await signInWithEmailAndPassword(auth, email, password);
-          alert("Logged in successfully!");
-          window.location.href = "index.html";
-        } else {
-          await createUserWithEmailAndPassword(auth, email, password);
-          alert("Account created successfully!");
-          window.location.href = "index.html";
-        }
-      } catch(err) {
-        alert(err.message);
+    authBtn.onclick = async () => {
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email.value, password.value)
+          .then(() => window.location.href = "index.html")
+          .catch(err => alert(err.message));
+      } else {
+        await createUserWithEmailAndPassword(auth, email.value, password.value)
+          .then(() => window.location.href = "index.html")
+          .catch(err => alert(err.message));
       }
-    });
-
-    // If already logged in, go to home
-    onAuthStateChanged(auth, (user) => {
-      if (user) window.location.href = "index.html";
-    });
+    }
   </script>
 </body>
 </html>

@@ -5,17 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>Mythos Arts - Product</title>
   <link rel="stylesheet" href="style.css" />
-  <style>
-    .back-btn {
-      background: #444;
-      color: #fff;
-      border: none;
-      padding: 6px 10px;
-      border-radius: 6px;
-      margin: 10px;
-      cursor: pointer;
-    }
-  </style>
 </head>
 <body>
   <header>
@@ -36,7 +25,7 @@
 
   <button class="back-btn" onclick="window.location.href='index.html'">⬅ Back</button>
 
-  <div class="page-container">
+  <div class="page-container" style="padding: 15px; text-align: center;">
     <h2 id="productName"></h2>
     <img id="productImage" style="width:100%;max-width:300px;display:block;margin:auto;" />
     <p id="productDesc"></p>
@@ -51,25 +40,24 @@
   <footer>&copy; 2025 Mythos Arts</footer>
 
   <script type="module">
-    // Firebase auth import
-    import { auth } from "./firebase.js";
+    import { auth, db } from "./firebase.js";
     import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getDoc, doc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-    // Auth button logic (Login/Logout)
     const authBtn = document.getElementById("authBtn");
+    const wishlistCount = document.getElementById("wishlistCount");
+    const cartCount = document.getElementById("cartCount");
+
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        authBtn.innerText = "Logout (" + user.email.split('@')[0] + ")";
-        authBtn.onclick = async () => { await signOut(auth); window.location.reload(); };
+        authBtn.innerText = `Logout (${user.email.split('@')[0]})`;
+        authBtn.onclick = async () => { await signOut(auth); window.location.reload(); }
       } else {
         authBtn.innerText = "Login";
         authBtn.onclick = () => window.location.href = "auth.html";
       }
     });
 
-    // Update badge counts
-    const wishlistCount = document.getElementById("wishlistCount");
-    const cartCount = document.getElementById("cartCount");
     function updateCounts() {
       const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
       const cart = JSON.parse(localStorage.getItem("cart")) || [];
@@ -81,38 +69,48 @@
     updateCounts();
     window.addEventListener("storage", updateCounts);
 
-    // Product details logic
-    const products = [
-      {id:1, name:"Anime Shirt", img:"https://live.staticflickr.com/65535/54688856594_a138e76547_b.jpg", desc:"Anime themed shirt", price:499},
-      {id:2, name:"Matte Shirt", img:"https://i.imgur.com/fThxrbD.png", desc:"Smooth matte shirt", price:599},
-      {id:3, name:"Streetwear Shirt", img:"https://i.imgur.com/N3Xt4bn.png", desc:"Urban streetwear shirt", price:699}
-    ];
-
+    // Load product by ID
     const urlParams = new URLSearchParams(window.location.search);
-    const product = products.find(p => p.id == urlParams.get("id"));
-    document.getElementById("productName").innerText = product.name + " - ₹" + product.price;
-    document.getElementById("productImage").src = product.img;
-    document.getElementById("productDesc").innerText = product.desc;
+    const productId = urlParams.get("id");
+    let product = null;
 
-    // Wishlist
-    window.addToWishlist = function() {
+    async function loadProduct() {
+      if (!productId) {
+        alert("No product found");
+        window.location.href = "index.html";
+        return;
+      }
+      const snap = await getDoc(doc(db, "products", productId));
+      if (!snap.exists()) {
+        alert("Product not found");
+        window.location.href = "index.html";
+        return;
+      }
+      product = { id: productId, ...snap.data() };
+      document.getElementById("productName").innerText = `${product.name} - ₹${product.price}`;
+      document.getElementById("productImage").src = product.img;
+      document.getElementById("productDesc").innerText = product.desc;
+    }
+
+    window.addToWishlist = () => {
       const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
       if (!wishlist.find(p => p.id === product.id)) wishlist.push(product);
       localStorage.setItem("wishlist", JSON.stringify(wishlist));
       updateCounts();
       alert("Added to Wishlist");
-    }
+    };
 
-    // Cart
-    window.addToCart = function() {
+    window.addToCart = () => {
       const size = document.getElementById("size").value;
       if (!size) return alert("Select a size");
       const cart = JSON.parse(localStorage.getItem("cart")) || [];
-      cart.push({...product, size});
+      cart.push({ ...product, size });
       localStorage.setItem("cart", JSON.stringify(cart));
       updateCounts();
       alert("Added to Cart");
-    }
+    };
+
+    loadProduct();
   </script>
 </body>
 </html>

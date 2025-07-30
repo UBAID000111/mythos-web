@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Mythos Arts</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {font-family: Arial, sans-serif; background:#f5f6fa; margin:0;}
+    header {background:#111; color:#fff; padding:1rem; display:flex; justify-content:space-between; align-items:center;}
+    header h2 {margin:0;}
+    .admin-container {padding:1.5rem; max-width:1000px; margin:auto;}
+    .add-btn {background:#27ae60; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; margin-bottom:1rem;}
+    .product-list {background:#fff; padding:1rem; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);}
+    .list-item {display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #eee; padding:0.5rem 0;}
+    .list-item img {width:50px; border-radius:6px;}
+    .actions button {margin-left:6px;}
+    .remove-btn {background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:6px; cursor:pointer;}
+    .edit-btn {background:#f39c12; color:white; border:none; padding:5px 10px; border-radius:6px; cursor:pointer;}
+    
+    /* Modal */
+    .modal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1000;}
+    .modal-content {background:#fff; padding:1.5rem; border-radius:10px; width:90%; max-width:400px; text-align:center; position:relative;}
+    .modal-content input, .modal-content textarea {
+      width:100%; padding:8px; margin:8px 0; border:1px solid #ccc; border-radius:6px;
+    }
+    .close {position:absolute; top:15px; right:20px; cursor:pointer; font-size:20px;}
+    .save-btn {background:#27ae60; color:white; border:none; padding:10px; width:100%; border-radius:6px; cursor:pointer;}
+  </style>
+</head>
+<body>
+  <header>
+    <h2>Admin Panel - Manage Products</h2>
+    <button class="btn" onclick="window.location.href='index.html'">Back to Shop</button>
+  </header>
+
+  <div class="admin-container">
+    <button class="add-btn" onclick="openModal()">+ Add New Product</button>
+    
+    <div class="product-list" id="productList">
+      <p>Loading products...</p>
+    </div>
+  </div>
+
+  <!-- Add/Edit Product Modal -->
+  <div class="modal" id="addModal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h3 id="modalTitle">Add New Product</h3>
+      <input id="name" placeholder="Product Name" />
+      <input id="price" placeholder="Price (₹)" type="number" />
+      <input id="imgUrl" placeholder="Paste Product Image URL" />
+      <textarea id="desc" placeholder="Product Description"></textarea>
+      <button class="save-btn" onclick="saveProduct()">Save Product</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from "./firebase.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import {
+      collection, addDoc, getDocs, deleteDoc, doc, updateDoc
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const productList = document.getElementById("productList");
+    const modal = document.getElementById("addModal");
+    let editId = null;
+
+    // Restrict access (Only admin email)
+    const adminEmail = "youradmin@gmail.com"; // Change this to your email
+    onAuthStateChanged(auth, (user) => {
+      if (!user || user.email !== adminEmail) {
+        alert("Access Denied! Only admin can view this page.");
+        window.location.href = "auth.html";
+      }
+    });
+
+    // Modal functions
+    window.openModal = (data=null, id=null) => {
+      document.getElementById("modalTitle").innerText = data ? "Edit Product" : "Add New Product";
+      editId = id;
+      if (data) {
+        document.getElementById("name").value = data.name;
+        document.getElementById("price").value = data.price;
+        document.getElementById("imgUrl").value = data.img;
+        document.getElementById("desc").value = data.desc;
+      } else {
+        document.getElementById("name").value = "";
+        document.getElementById("price").value = "";
+        document.getElementById("imgUrl").value = "";
+        document.getElementById("desc").value = "";
+      }
+      modal.style.display = "flex";
+    };
+
+    window.closeModal = () => modal.style.display = "none";
+
+    // Save Product (Add / Edit)
+    window.saveProduct = async () => {
+      const name = document.getElementById("name").value;
+      const price = document.getElementById("price").value;
+      const img = document.getElementById("imgUrl").value;
+      const desc = document.getElementById("desc").value;
+      if (!name || !price || !img) return alert("Fill all fields");
+
+      if (editId) {
+        await updateDoc(doc(db, "products", editId), { name, price: parseInt(price), img, desc });
+        alert("Product Updated!");
+      } else {
+        await addDoc(collection(db, "products"), { name, price: parseInt(price), img, desc });
+        alert("Product Added!");
+      }
+      closeModal();
+      location.reload();
+    };
+
+    // Load Products
+    async function loadProducts() {
+      const snapshot = await getDocs(collection(db, "products"));
+      productList.innerHTML = "";
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        productList.innerHTML += `
+          <div class="list-item">
+            <img src="${data.img}">
+            <div><b>${data.name}</b> - ₹${data.price}</div>
+            <div class="actions">
+              <button class="edit-btn" onclick='openModal(${JSON.stringify(data)}, "${docSnap.id}")'>Edit</button>
+              <button class="remove-btn" onclick='deleteProduct("${docSnap.id}")'>Delete</button>
+            </div>
+          </div>`;
+      });
+    }
+
+    window.deleteProduct = async (id) => {
+      await deleteDoc(doc(db, "products", id));
+      alert("Deleted!");
+      location.reload();
+    };
+
+    loadProducts();
+  </script>
+</body>
+</html>

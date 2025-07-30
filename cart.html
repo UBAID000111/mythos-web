@@ -1,105 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Cart - Mythos Arts</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Mythos Arts - Cart</title>
   <link rel="stylesheet" href="style.css" />
-  <style>
-    .cart-container {max-width:800px; margin:80px auto; padding:1rem;}
-    .list-item {
-      display:flex; align-items:center; justify-content:space-between;
-      background:#f8f9fc; padding:0.7rem; margin-bottom:0.7rem; border-radius:8px;
-    }
-    .list-item img {
-      width:60px; height:60px; object-fit:cover; border-radius:8px;
-    }
-    .list-info {flex:1; margin-left:12px;}
-    .list-info h4 {margin:0; font-size:1rem;}
-    .list-info small {color:#666;}
-    .remove-btn {background:#e74c3c; border:none; color:#fff; padding:5px 10px; border-radius:8px; cursor:pointer;}
-    .total {font-weight:bold; margin-top:1rem; text-align:right;}
-    .back-btn {
-      display:inline-block; margin-bottom:1rem; background:#111; color:#fff;
-      padding:8px 12px; border-radius:8px; text-decoration:none; font-weight:600;
-    }
-  </style>
 </head>
 <body>
-  <!-- Header -->
   <header>
     <div class="logo">
       <img src="https://live.staticflickr.com/65535/54688874864_1e7c7e544d_q.jpg">
       <h2>Mythos Arts</h2>
     </div>
     <div class="header-icons">
-      <button id="loginBtn" class="btn" onclick="window.location.href='auth.html'">Login</button>
-      <button id="logoutBtn" class="btn" style="display:none;">Logout</button>
+      <button class="btn" id="authBtn">Login</button>
+      <button class="icon-btn" onclick="window.location.href='wishlist.html'">
+        <img src="https://img.icons8.com/ios-filled/50/like.png"><span class="badge" id="wishlistCount"></span>
+      </button>
+      <button class="icon-btn" onclick="window.location.href='cart.html'">
+        <img src="https://img.icons8.com/ios-filled/50/shopping-cart.png"><span class="badge" id="cartCount"></span>
+      </button>
     </div>
   </header>
 
-  <!-- Cart Content -->
-  <div class="cart-container">
-    <a href="index.html" class="back-btn">⬅ Back to Home</a>
-    <h2>Your Cart</h2>
-    <div id="cartItems"></div>
-    <div class="total" id="totalPrice"></div>
+  <button class="back-btn" onclick="window.location.href='index.html'">⬅ Back</button>
+
+  <div class="products" id="cartContainer"></div>
+  <h3 style="text-align:center;" id="totalPrice"></h3>
+  <div style="text-align:center; padding:10px;">
+    <button class="btn" onclick="checkout()">Place Order</button>
   </div>
+
+  <footer>&copy; 2025 Mythos Arts</footer>
 
   <script type="module">
     import { auth } from "./firebase.js";
     import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-    const loginBtn = document.getElementById("loginBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-
-    logoutBtn.addEventListener("click", async () => {
-      await signOut(auth);
-      window.location.href = "auth.html";
-    });
+    const cartContainer = document.getElementById("cartContainer");
+    const totalPriceEl = document.getElementById("totalPrice");
+    const wishlistCount = document.getElementById("wishlistCount");
+    const cartCount = document.getElementById("cartCount");
+    const authBtn = document.getElementById("authBtn");
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        loginBtn.style.display = "none";
-        logoutBtn.style.display = "inline-block";
+        authBtn.innerText = `Logout (${user.email.split('@')[0]})`;
+        authBtn.onclick = async () => { await signOut(auth); window.location.reload(); }
       } else {
-        loginBtn.style.display = "inline-block";
-        logoutBtn.style.display = "none";
+        authBtn.innerText = "Login";
+        authBtn.onclick = () => window.location.href = "auth.html";
       }
     });
 
-    // Cart rendering
-    const cartItemsEl = document.getElementById("cartItems");
-    const totalPriceEl = document.getElementById("totalPrice");
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
-
-    function renderCart() {
-      cartItemsEl.innerHTML = cart.length
-        ? ""
-        : "<p>No items in cart</p>";
-      let total = 0;
-      cart.forEach((item, i) => {
-        total += item.price;
-        cartItemsEl.innerHTML += `
-          <div class="list-item">
-            <img src="${item.img}" alt="${item.name}">
-            <div class="list-info">
-              <h4>${item.name}</h4><small>Size: ${item.size}</small>
-            </div>
-            <button class="remove-btn" onclick="removeItem(${i})">X</button>
-          </div>
-        `;
-      });
-      totalPriceEl.innerText = "Total: ₹" + total;
+    function updateCounts() {
+      const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      wishlistCount.style.display = wishlist.length ? "inline-block" : "none";
+      cartCount.style.display = cart.length ? "inline-block" : "none";
+      wishlistCount.innerText = wishlist.length;
+      cartCount.innerText = cart.length;
     }
 
-    window.removeItem = (i) => {
-      cart.splice(i, 1);
-      localStorage.setItem("cart", JSON.stringify(cart));
-      renderCart();
-    };
+    function loadCart() {
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      if (!cart.length) {
+        cartContainer.innerHTML = "<p style='text-align:center;'>Your cart is empty</p>";
+        totalPriceEl.innerText = "";
+        return;
+      }
 
-    renderCart();
+      cartContainer.innerHTML = "";
+      let total = 0;
+      cart.forEach((p, index) => {
+        total += p.price;
+        cartContainer.innerHTML += `
+          <div class="product-card">
+            <img src="${p.img}" alt="${p.name}">
+            <h4>${p.name} (${p.size}) - ₹${p.price}</h4>
+            <button class="btn" onclick="removeItem(${index})">Remove</button>
+          </div>`;
+      });
+      totalPriceEl.innerText = `Total: ₹${total}`;
+    }
+
+    window.removeItem = (index) => {
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      cart.splice(index, 1);
+      localStorage.setItem("cart", JSON.stringify(cart));
+      updateCounts();
+      loadCart();
+    }
+
+    window.checkout = () => {
+      alert("Order placed successfully!");
+      localStorage.removeItem("cart");
+      updateCounts();
+      loadCart();
+    }
+
+    updateCounts();
+    loadCart();
+    window.addEventListener("storage", () => { updateCounts(); loadCart(); });
   </script>
 </body>
 </html>
