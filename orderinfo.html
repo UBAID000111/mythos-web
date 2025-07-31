@@ -4,7 +4,52 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Order Info - Mythos Arts</title>
-  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+      background-color: #f4f4f4;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    form input, form textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #222;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #444;
+    }
+  </style>
+
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -12,7 +57,7 @@
 </head>
 <body>
   <div class="container">
-    <h2>Enter Shipping Details</h2>
+    <h2>Shipping Information</h2>
     <form id="orderForm">
       <input type="text" id="name" placeholder="Full Name" required />
       <input type="text" id="phone" placeholder="Phone Number" required />
@@ -27,7 +72,7 @@
   <script>
     firebase.auth().onAuthStateChanged(user => {
       if (!user) {
-        alert("Please login to continue");
+        alert("Please login first");
         window.location.href = "auth.html";
         return;
       }
@@ -39,21 +84,28 @@
         return;
       }
 
-      const total = cart.reduce((sum, item) => sum + item.price, 0);
+      const total = cart.reduce((sum, item) => sum + (item.price || 0), 0);
 
       document.getElementById("orderForm").addEventListener("submit", async (e) => {
         e.preventDefault();
 
+        const name = document.getElementById("name").value.trim();
+        const phone = document.getElementById("phone").value.trim();
+        const city = document.getElementById("city").value.trim();
+        const state = document.getElementById("state").value.trim();
+        const pincode = document.getElementById("pincode").value.trim();
+        const address = document.getElementById("address").value.trim();
+
         const orderData = {
           email: user.email,
-          name: document.getElementById("name").value,
-          phone: document.getElementById("phone").value,
-          city: document.getElementById("city").value,
-          state: document.getElementById("state").value,
-          pincode: document.getElementById("pincode").value,
-          address: document.getElementById("address").value,
-          total: total,
+          name,
+          phone,
+          city,
+          state,
+          pincode,
+          address,
           cartItems: cart,
+          total,
           status: "Pending",
           timestamp: new Date().toISOString()
         };
@@ -61,10 +113,11 @@
         try {
           await firebase.firestore().collection("orders").add(orderData);
           localStorage.setItem("orderSaved", "true");
+          localStorage.setItem("orderTotal", total);
           window.location.href = "payment.html";
         } catch (error) {
           console.error("Error saving order:", error);
-          alert("Something went wrong while saving your order. Please try again.");
+          alert("Error saving order. Try again.");
         }
       });
     });
