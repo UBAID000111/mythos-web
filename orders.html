@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Orders - Mythos Arts</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    .order-card {
+      border: 1px solid #ddd;
+      margin: 10px;
+      padding: 15px;
+      border-radius: 10px;
+      background: #fff;
+    }
+    .order-card h3 {
+      margin: 0 0 10px;
+    }
+    .order-card button {
+      margin-top: 10px;
+      background: #3498db;
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>My Orders</h2>
+    <div id="orders"></div>
+  </div>
+
+  <script type="module">
+    import { auth, db } from "./firebase.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getDocs, collection, query, where } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const ordersDiv = document.getElementById("orders");
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        alert("Please login first");
+        window.location.href = "auth.html";
+        return;
+      }
+
+      const q = query(collection(db, "orders"), where("email", "==", user.email));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        ordersDiv.innerHTML = "<p>No orders found.</p>";
+        return;
+      }
+
+      snap.forEach((doc) => {
+        const order = doc.data();
+        const div = document.createElement("div");
+        div.className = "order-card";
+
+        div.innerHTML = `
+          <h3>Order on ${new Date(order.timestamp).toLocaleString()}</h3>
+          <p><b>Total:</b> ₹${order.total}</p>
+          <p><b>Address:</b> ${order.shipping?.address || "N/A"}</p>
+          <p><b>Status:</b> ${order.status}</p>
+          <button onclick='downloadInvoice(${JSON.stringify(order).replace(/'/g, "\\'")})'>Download Invoice</button>
+        `;
+
+        ordersDiv.appendChild(div);
+      });
+    });
+
+    window.downloadInvoice = (order) => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text("Invoice - Mythos Arts", 20, 20);
+
+      doc.setFontSize(12);
+      doc.text(`Date: ${new Date(order.timestamp).toLocaleString()}`, 20, 35);
+      doc.text(`Email: ${order.email}`, 20, 45);
+      doc.text(`Address: ${order.shipping.address || "N/A"}`, 20, 55);
+
+      let y = 70;
+      doc.text("Items:", 20, y);
+      y += 10;
+
+      order.items.forEach((item, i) => {
+        doc.text(`${i + 1}. ${item.name} - ₹${item.price} × ${item.qty}`, 25, y);
+        y += 10;
+      });
+
+      doc.text(`Total: ₹${order.total}`, 20, y + 10);
+      doc.save("invoice.pdf");
+    };
+  </script>
+</body>
+</html>

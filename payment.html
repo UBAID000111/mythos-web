@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Payment - Mythos Arts</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .pay-container {max-width: 400px; margin: 50px auto; text-align: center; background:#fff; padding:20px; border-radius:10px;}
+    button {padding:10px 20px; background:#27ae60; color:white; border:none; border-radius:6px; cursor:pointer; margin:10px;}
+  </style>
+</head>
+<body>
+  <div class="pay-container">
+    <h2>Payment</h2>
+    <p id="finalAmount"></p>
+    <button onclick="payUPI()">Pay Now</button>
+  </div>
+
+  <script type="module">
+    import { auth, db } from "./firebase.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const amount = localStorage.getItem("cartTotal") || 0;
+    const cart = JSON.parse(localStorage.getItem("cart")) || [];
+    const shipping = JSON.parse(localStorage.getItem("shippingInfo")) || {};
+
+    const amountEl = document.getElementById("finalAmount");
+    amountEl.innerText = `Pay ₹${amount}`;
+
+    let currentUser = null;
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        alert("Please login to continue");
+        window.location.href = "auth.html";
+      } else {
+        currentUser = user;
+      }
+    });
+
+    window.payUPI = async () => {
+      const upiID = "8218167743@pthdfc";
+      const upiUrl = `upi://pay?pa=${upiID}&pn=MythosArts&am=${amount}&cu=INR`;
+      window.location.href = upiUrl;
+
+      // Save order to Firestore
+      await addDoc(collection(db, "orders"), {
+        email: currentUser.email,
+        items: cart,
+        total: parseInt(amount),
+        shipping,
+        status: "Pending",
+        timestamp: Date.now(),
+      });
+
+      // Clear cart
+      localStorage.removeItem("cart");
+      localStorage.removeItem("cartTotal");
+      localStorage.removeItem("shippingInfo");
+    }
+  </script>
+</body>
+</html>

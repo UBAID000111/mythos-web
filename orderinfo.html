@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Order Info - Mythos Arts</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .form-container {
+      max-width: 400px;
+      margin: 50px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    input {width: 90%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px;}
+    button {width: 95%; padding: 10px; background:#27ae60; color:#fff; border:none; border-radius:6px; cursor:pointer;}
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h2>Shipping Info</h2>
+    <input id="name" placeholder="Full Name" required>
+    <input id="phone" placeholder="Phone Number" required>
+    <input id="address" placeholder="Street Address" required>
+    <input id="city" placeholder="City" required>
+    <input id="state" placeholder="State" required>
+    <input id="pincode" placeholder="Pincode" required>
+    <button onclick="saveInfo()">Continue to Payment</button>
+  </div>
+
+  <script type="module">
+    import { auth, db } from "./firebase.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const cart = JSON.parse(localStorage.getItem("cart")) || [];
+    const total = localStorage.getItem("cartTotal");
+
+    let currentUser = null;
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        alert("Please login to continue");
+        window.location.href = "auth.html";
+      } else {
+        currentUser = user;
+      }
+    });
+
+    window.saveInfo = async () => {
+      const info = {
+        name: document.getElementById("name").value,
+        phone: document.getElementById("phone").value,
+        address: document.getElementById("address").value,
+        city: document.getElementById("city").value,
+        state: document.getElementById("state").value,
+        pincode: document.getElementById("pincode").value,
+      };
+
+      if (!info.name || !info.phone || !info.address || !info.city || !info.state || !info.pincode) {
+        alert("Fill all fields!");
+        return;
+      }
+
+      localStorage.setItem("shippingInfo", JSON.stringify(info));
+      window.location.href = "payment.html";
+    };
+  </script>
+</body>
+</html>

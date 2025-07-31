@@ -28,7 +28,7 @@
   <div class="products" id="cartContainer"></div>
   <h3 style="text-align:center;" id="totalPrice"></h3>
   <div style="text-align:center; padding:10px;">
-    <button class="btn" onclick="checkout()">Place Order</button>
+    <button class="btn" onclick="checkout()">Checkout</button>
   </div>
 
   <footer>&copy; 2025 Mythos Arts</footer>
@@ -92,11 +92,18 @@
       loadCart();
     }
 
+    // ✅ Redirect to orderinfo.html with total stored
     window.checkout = () => {
-      alert("Order placed successfully!");
-      localStorage.removeItem("cart");
-      updateCounts();
-      loadCart();
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      if (!cart.length) {
+        alert("Your cart is empty!");
+        return;
+      }
+
+      const total = cart.reduce((sum, item) => sum + item.price, 0);
+      localStorage.setItem("cartTotal", total);
+
+      window.location.href = "orderinfo.html";
     }
 
     updateCounts();
