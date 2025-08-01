@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
+    *{
+      margin: 10px;
+    }
     .order-card {
       border: 1px solid #ddd;
       margin: 10px;
@@ -30,6 +33,18 @@
 </head>
 <body>
   <div class="container">
+    <button onclick="history.back()" style="
+  margin-bottom: 20px;
+  background-color: #eee;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+">
+  ← Back
+</button>
+
     <h2>My Orders</h2>
     <div id="orders"></div>
   </div>

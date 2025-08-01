@@ -1,125 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Order Info - Mythos Arts</title>
+  <link rel="stylesheet" href="styles.css" />
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: Arial;
+      background: #f8f8f8;
       padding: 20px;
-      margin: 0;
-      background-color: #f4f4f4;
     }
-
     .container {
-      max-width: 500px;
+      max-width: 600px;
       margin: auto;
       background: white;
-      padding: 25px;
+      padding: 20px;
       border-radius: 10px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-
-    h2 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    form input, form textarea {
+    input, button {
       width: 100%;
       padding: 12px;
-      margin: 10px 0;
+      margin: 8px 0;
+      border-radius: 6px;
       border: 1px solid #ccc;
-      border-radius: 6px;
     }
-
     button {
-      width: 100%;
-      padding: 12px;
-      background-color: #222;
+      background-color: black;
       color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 16px;
+      font-weight: bold;
       cursor: pointer;
     }
-
     button:hover {
-      background-color: #444;
+      background-color: #333;
     }
   </style>
-
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-  <script src="firebase.js"></script>
 </head>
 <body>
   <div class="container">
+    <button onclick="history.back()" style="
+  margin-bottom: 20px;
+  background-color: #111;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+">
+  ← Back
+</button>
+
     <h2>Shipping Information</h2>
-    <form id="orderForm">
-      <input type="text" id="name" placeholder="Full Name" required />
-      <input type="text" id="phone" placeholder="Phone Number" required />
-      <input type="text" id="city" placeholder="City" required />
-      <input type="text" id="state" placeholder="State" required />
-      <input type="text" id="pincode" placeholder="Pincode" required />
-      <textarea id="address" placeholder="Full Address" required></textarea>
-      <button type="submit">Continue to Payment</button>
-    </form>
+    <input type="text" id="name" placeholder="Your Name" required>
+    <input type="text" id="phone" placeholder="Phone Number" required>
+    <input type="text" id="address" placeholder="Full Address" required>
+    <input type="text" id="city" placeholder="City" required>
+    <input type="text" id="pincode" placeholder="Pincode" required>
+    <button id="continueBtn">Continue to Payment</button>
   </div>
 
-  <script>
-    firebase.auth().onAuthStateChanged(user => {
+  <script type="module">
+    import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { auth, db } from './firebase.js';
+
+    let currentUserEmail = null;
+
+    onAuthStateChanged(auth, user => {
       if (!user) {
-        alert("Please login first");
+        alert("Please log in first.");
         window.location.href = "auth.html";
+      } else {
+        currentUserEmail = user.email;
+      }
+    });
+
+    document.getElementById("continueBtn").addEventListener("click", async () => {
+      const name = document.getElementById("name").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const address = document.getElementById("address").value.trim();
+      const city = document.getElementById("city").value.trim();
+      const pincode = document.getElementById("pincode").value.trim();
+
+      if (!name || !phone || !address || !city || !pincode) {
+        alert("Please fill in all fields");
         return;
       }
 
-      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-      if (cart.length === 0) {
-        alert("Your cart is empty.");
-        window.location.href = "index.html";
-        return;
-      }
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      const total = cart.reduce((sum, item) => sum + item.price, 0);
 
-      const total = cart.reduce((sum, item) => sum + (item.price || 0), 0);
+      const orderId = "ORDER_" + Date.now();
+      const orderData = {
+        email: currentUserEmail,
+        name, phone, address, city, pincode,
+        items: cart,
+        total,
+        timestamp: serverTimestamp(),
+        status: "Pending"
+      };
 
-      document.getElementById("orderForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const name = document.getElementById("name").value.trim();
-        const phone = document.getElementById("phone").value.trim();
-        const city = document.getElementById("city").value.trim();
-        const state = document.getElementById("state").value.trim();
-        const pincode = document.getElementById("pincode").value.trim();
-        const address = document.getElementById("address").value.trim();
-
-        const orderData = {
-          email: user.email,
-          name,
-          phone,
-          city,
-          state,
-          pincode,
-          address,
-          cartItems: cart,
-          total,
-          status: "Pending",
-          timestamp: new Date().toISOString()
-        };
-
-        try {
-          await firebase.firestore().collection("orders").add(orderData);
-          localStorage.setItem("orderSaved", "true");
-          localStorage.setItem("orderTotal", total);
-          window.location.href = "payment.html";
-        } catch (error) {
-          console.error("Error saving order:", error);
-          alert("Error saving order. Try again.");
-        }
-      });
+      await setDoc(doc(db, "orders", orderId), orderData);
+      localStorage.setItem("currentOrderId", orderId);
+      window.location.href = "payment.html";
     });
   </script>
 </body>
