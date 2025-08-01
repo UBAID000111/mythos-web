@@ -108,7 +108,7 @@
       doc.text("🧾 Invoice - Mythos Arts", 20, 20);
 
       doc.setFontSize(12);
-      doc.text(`Date: ${new Date(order.timestamp?.toDate?.() || order.timestamp || Date.now()).toLocaleString()}`, 20, 35);
+      doc.text(`Date: ${new Date(order.timestamp?.seconds * 1000).toLocaleString()}`, 20, 35);
       doc.text(`Email: ${order.email}`, 20, 45);
       doc.text(`Name: ${order.name || "N/A"}`, 20, 55);
       doc.text(`Phone: ${order.phone || "N/A"}`, 20, 65);
