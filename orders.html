@@ -2,158 +2,129 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>My Orders - Mythos Arts</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>My Orders | Mythos Arts</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
     body {
-      font-family: sans-serif;
+      font-family: Arial, sans-serif;
       padding: 20px;
-      background-color: #f7f7f7;
-    }
-    .container {
-      max-width: 800px;
-      margin: auto;
+      background: #f9f9f9;
     }
     .order-card {
+      background-color: #fff;
       border: 1px solid #ddd;
-      margin-bottom: 20px;
-      padding: 20px;
       border-radius: 10px;
-      background: #fff;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     .order-card h3 {
-      margin-bottom: 10px;
-      color: #2c3e50;
-    }
-    .order-card p {
-      margin: 6px 0;
+      margin-top: 0;
     }
     .order-card button {
+      padding: 8px 12px;
       margin-top: 10px;
       background: #3498db;
       color: white;
-      padding: 8px 14px;
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      margin-right: 10px;
-    }
-    .order-card button.remove {
-      background-color: #e74c3c;
-    }
-    .back-btn {
-      margin-bottom: 20px;
-      background-color: #eee;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <button onclick="history.back()" class="back-btn">← Back</button>
-
-    <h2>My Orders</h2>
-    <div id="orders"></div>
-  </div>
+  <button onclick="history.back()" style="
+  margin-bottom: 20px;
+  background-color: #eee;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+">
+  ← Back
+</button>
+  <h2>🛒 My Orders</h2>
+  <div id="orders"></div>
 
   <script type="module">
-    import { auth, db } from "./firebase.js";
-    import {
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import {
-      getDocs,
-      collection,
-      query,
-      where,
-      deleteDoc,
-      doc
-    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { auth, db } from './firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { collection, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-    const ordersDiv = document.getElementById("orders");
+    const ordersDiv = document.getElementById('orders');
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        alert("Please login first");
+        alert("Please login to view your orders.");
         window.location.href = "auth.html";
         return;
       }
 
-      const q = query(collection(db, "orders"), where("email", "==", user.email));
-      const snap = await getDocs(q);
-
-      if (snap.empty) {
-        ordersDiv.innerHTML = "<p>No orders found.</p>";
-        return;
-      }
+      const snap = await getDocs(collection(db, "orders"));
+      let hasOrders = false;
 
       snap.forEach((docSnap) => {
         const order = docSnap.data();
-        const docId = docSnap.id;
-        const div = document.createElement("div");
-        div.className = "order-card";
+
+        // Filter only current user's orders
+        if (order.email !== user.email) return;
+
+        hasOrders = true;
+
+        const shipping = order.shipping || {};
+        const time = order.timestamp && order.timestamp.toDate ? order.timestamp.toDate().toLocaleString() : "Invalid Date";
+
+        const div = document.createElement('div');
+        div.className = 'order-card';
 
         div.innerHTML = `
-          <h3>Order on ${order.timestamp ? new Date(order.timestamp).toLocaleString() : "N/A"}</h3>
+          <h3>🕒 Order on: ${time}</h3>
           <p><b>Total:</b> ₹${order.total || "N/A"}</p>
           <p><b>Status:</b> ${order.status || "Pending"}</p>
-          <p><b>Name:</b> ${order.shipping?.name || "N/A"}</p>
-          <p><b>Phone:</b> ${order.shipping?.phone || "N/A"}</p>
-          <p><b>City:</b> ${order.shipping?.city || "N/A"}</p>
-          <p><b>Pincode:</b> ${order.shipping?.pincode || "N/A"}</p>
-          <p><b>Address:</b> ${order.shipping?.address || "N/A"}</p>
+          <p><b>Name:</b> ${order.name || "N/A"}</p>
+          <p><b>Phone:</b> ${order.phone || "N/A"}</p>
+          <p><b>City:</b> ${order.city || "N/A"}</p>
+          <p><b>Pincode:</b> ${order.pincode || "N/A"}</p>
+          <p><b>Address:</b> ${order.address || "N/A"}</p>
           <button onclick='downloadInvoice(${JSON.stringify(order).replace(/'/g, "\\'")})'>Download Invoice</button>
-          <button class="remove" onclick='removeOrder("${docId}")'>Remove Order</button>
         `;
+
         ordersDiv.appendChild(div);
       });
+
+      if (!hasOrders) {
+        ordersDiv.innerHTML = "<p>You haven't placed any orders yet.</p>";
+      }
     });
 
+    // Invoice download
     window.downloadInvoice = (order) => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
 
       doc.setFontSize(16);
-      doc.text("Invoice - Mythos Arts", 20, 20);
+      doc.text("🧾 Invoice - Mythos Arts", 20, 20);
 
       doc.setFontSize(12);
-      doc.text(`Date: ${order.timestamp ? new Date(order.timestamp).toLocaleString() : "N/A"}`, 20, 35);
-      doc.text(`Email: ${order.email || ""}`, 20, 45);
-      doc.text(`Name: ${order.shipping?.name || "N/A"}`, 20, 55);
-      doc.text(`Phone: ${order.shipping?.phone || "N/A"}`, 20, 65);
-      doc.text(`Address: ${order.shipping?.address || ""}, ${order.shipping?.city || ""} - ${order.shipping?.pincode || ""}`, 20, 75);
+      doc.text(`Date: ${new Date(order.timestamp?.toDate?.() || order.timestamp || Date.now()).toLocaleString()}`, 20, 35);
+      doc.text(`Email: ${order.email}`, 20, 45);
+      doc.text(`Name: ${order.name || "N/A"}`, 20, 55);
+      doc.text(`Phone: ${order.phone || "N/A"}`, 20, 65);
+      doc.text(`Address: ${order.address || "N/A"}`, 20, 75);
 
       let y = 90;
       doc.text("Items:", 20, y);
       y += 10;
 
-      (order.items || []).forEach((item, i) => {
-        doc.text(`${i + 1}. ${item.name} - ₹${item.price} × ${item.qty}`, 25, y);
+      order.items?.forEach((item, i) => {
+        doc.text(`${i + 1}. ${item.name} - ₹${item.price} x ${item.qty}`, 25, y);
         y += 10;
       });
 
       doc.text(`Total: ₹${order.total}`, 20, y + 10);
       doc.save("invoice.pdf");
-    };
-
-    window.removeOrder = async (orderId) => {
-      if (confirm("Are you sure you want to delete this order?")) {
-        await deleteDoc(doc(db, "orders", orderId));
-        alert("Order deleted");
-        window.location.reload();
-      }
     };
   </script>
 </body>
