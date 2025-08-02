@@ -4,10 +4,13 @@ body {
     font-family: Arial, sans-serif;
     background: #f8f9fa;
     color: #333;
+  } 
+  h2{
+    color: #111;
   }
   
   header {
-    background: #111;
+    background: #fff;
     color: #fff;
     padding: 10px 15px;
     display: flex;
