@@ -31,6 +31,31 @@
       border-radius: 6px;
       cursor: pointer;
     }
+    .order-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 12px 0;
+    }
+    .order-images img {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      max-width: 300px;
+      width: 100%;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .order-images img:hover {
+      transform: scale(1.05);
+    }
+    @media (max-width: 600px) {
+      .order-images img {
+        max-width: 100%;
+      }
+    }
+    .status {
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -46,8 +71,7 @@
   ← Back
 </button>
 
-<body>
-  <button onclick="window.location.href='index.html'" style="
+<button onclick="window.location.href='index.html'" style="
   margin-bottom: 20px;
   background-color: #eee;
   border: none;
@@ -59,87 +83,97 @@
    Home
 </button>
 
-  <h2>🛒 My Orders</h2>
-  <div id="orders"></div>
+<h2>🛒 My Orders</h2>
+<div id="orders"></div>
 
-  <script type="module">
-    import { auth, db } from './firebase.js';
-    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-    import { collection, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+<script type="module">
+  import { auth, db } from './firebase.js';
+  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+  import { collection, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-    const ordersDiv = document.getElementById('orders');
+  const ordersDiv = document.getElementById('orders');
 
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        alert("Please login to view your orders.");
-        window.location.href = "auth.html";
-        return;
-      }
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      alert("Please login to view your orders.");
+      window.location.href = "auth.html";
+      return;
+    }
 
-      const snap = await getDocs(collection(db, "orders"));
-      let hasOrders = false;
+    const snap = await getDocs(collection(db, "orders"));
+    let hasOrders = false;
 
-      snap.forEach((docSnap) => {
-        const order = docSnap.data();
+    snap.forEach((docSnap) => {
+      const order = docSnap.data();
 
-        // Filter only current user's orders
-        if (order.email !== user.email) return;
+      // Only show user's orders
+      if (order.email !== user.email) return;
 
-        hasOrders = true;
+      hasOrders = true;
 
-        const shipping = order.shipping || {};
-        const time = order.timestamp && order.timestamp.toDate ? order.timestamp.toDate().toLocaleString() : "Invalid Date";
+      const shipping = order.shipping || {};
+      const time = order.timestamp && order.timestamp.toDate ? order.timestamp.toDate().toLocaleString() : "Invalid Date";
 
-        const div = document.createElement('div');
-        div.className = 'order-card';
+      const div = document.createElement('div');
+      div.className = 'order-card';
 
-        div.innerHTML = `
-          <h3>🕒 Order on: ${time}</h3>
-          <p><b>Total:</b> ₹${order.total || "N/A"}</p>
-          <p><b>Status:</b> ${order.status || "Pending"}</p>
-          <p><b>Name:</b> ${order.name || "N/A"}</p>
-          <p><b>Phone:</b> ${order.phone || "N/A"}</p>
-          <p><b>City:</b> ${order.city || "N/A"}</p>
-          <p><b>Pincode:</b> ${order.pincode || "N/A"}</p>
-          <p><b>Address:</b> ${order.address || "N/A"}</p>
-          <button onclick='downloadInvoice(${JSON.stringify(order).replace(/'/g, "\\'")})'>Download Invoice</button>
-        `;
+      // Order images section
+      const imagesHtml = (order.items || []).map(item => `
+        <div>
+          <img src="${item.img}" alt="${item.name}" />
+          <p style="text-align:center;font-size:13px;">${item.name} x${item.qty || 1}</p>
+        </div>
+      `).join("");
 
-        ordersDiv.appendChild(div);
-      });
+      div.innerHTML = `
+        <h3>🕒 Order on: ${time}</h3>
+        <p><b>Total:</b> ₹${order.total || "N/A"}</p>
+        <p><b>Status:</b> <span class="status" style="color:${order.status === 'Confirmed' ? 'green' : 'red'}">${order.status || "Pending"}</span></p>
+        ${order.referenceId ? `<p><b>Reference ID:</b> ${order.referenceId}</p>` : ""}
+        <p><b>Name:</b> ${order.name || "N/A"}</p>
+        <p><b>Phone:</b> ${order.phone || "N/A"}</p>
+        <p><b>City:</b> ${order.city || "N/A"}</p>
+        <p><b>Pincode:</b> ${order.pincode || "N/A"}</p>
+        <p><b>Address:</b> ${order.address || "N/A"}</p>
+        <div class="order-images">${imagesHtml}</div>
+        <button onclick='downloadInvoice(${JSON.stringify(order).replace(/'/g, "\\'")})'>Download Invoice</button>
+      `;
 
-      if (!hasOrders) {
-        ordersDiv.innerHTML = "<p>You haven't placed any orders yet.</p>";
-      }
+      ordersDiv.appendChild(div);
     });
 
-    // Invoice download
-    window.downloadInvoice = (order) => {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
+    if (!hasOrders) {
+      ordersDiv.innerHTML = "<p>You haven't placed any orders yet.</p>";
+    }
+  });
 
-      doc.setFontSize(16);
-      doc.text("🧾 Invoice - Mythos Arts", 20, 20);
+  // Invoice download
+  window.downloadInvoice = (order) => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
 
-      doc.setFontSize(12);
-      doc.text(`Date: ${new Date(order.timestamp?.seconds * 1000).toLocaleString()}`, 20, 35);
-      doc.text(`Email: ${order.email}`, 20, 45);
-      doc.text(`Name: ${order.name || "N/A"}`, 20, 55);
-      doc.text(`Phone: ${order.phone || "N/A"}`, 20, 65);
-      doc.text(`Address: ${order.address || "N/A"}`, 20, 75);
+    doc.setFontSize(16);
+    doc.text("🧾 Invoice - Mythos Arts", 20, 20);
 
-      let y = 90;
-      doc.text("Items:", 20, y);
+    doc.setFontSize(12);
+    doc.text(`Date: ${new Date(order.timestamp?.seconds * 1000).toLocaleString()}`, 20, 35);
+    doc.text(`Email: ${order.email}`, 20, 45);
+    doc.text(`Name: ${order.name || "N/A"}`, 20, 55);
+    doc.text(`Phone: ${order.phone || "N/A"}`, 20, 65);
+    doc.text(`Address: ${order.address || "N/A"}`, 20, 75);
+
+    let y = 90;
+    doc.text("Items:", 20, y);
+    y += 10;
+
+    order.items?.forEach((item, i) => {
+      doc.text(`${i + 1}. ${item.name} - ₹${item.price} x ${item.qty}`, 25, y);
       y += 10;
+    });
 
-      order.items?.forEach((item, i) => {
-        doc.text(`${i + 1}. ${item.name} - ₹${item.price} x ${item.qty}`, 25, y);
-        y += 10;
-      });
-
-      doc.text(`Total: ₹${order.total}`, 20, y + 10);
-      doc.save("invoice.pdf");
-    };
-  </script>
+    doc.text(`Total: ₹${order.total}`, 20, y + 10);
+    doc.save("invoice.pdf");
+  };
+</script>
 </body>
 </html>
