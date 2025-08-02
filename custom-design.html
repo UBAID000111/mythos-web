@@ -164,23 +164,35 @@
     const uploadInput = document.getElementById("uploadInput");
     const uploadedImage = document.getElementById("uploadedImage");
     const saveBtn = document.getElementById("saveBtn");
-    const resetBtn = document.getElementById("resetBtn");
-    const resizeHandle = document.getElementById("resizeHandle");
-    const deleteBtn = document.getElementById("deleteBtn");
-    const tshirtContainer = document.getElementById("tshirtContainer");
-
+  
+    // Resizer & rotation handle
+    const resizeHandle = document.createElement("div");
+    resizeHandle.style.width = "18px";
+    resizeHandle.style.height = "18px";
+    resizeHandle.style.background = "#27ae60";
+    resizeHandle.style.borderRadius = "50%";
+    resizeHandle.style.position = "absolute";
+    resizeHandle.style.bottom = "-12px";
+    resizeHandle.style.right = "-12px";
+    resizeHandle.style.cursor = "nwse-resize";
+    resizeHandle.style.display = "none";
+    document.querySelector(".tshirt-container").appendChild(resizeHandle);
+  
+    let scale = 1, rotation = 0, isDragging = false;
+    let startX, startY, initialX, initialY, initialWidth, initialHeight;
+  
     const tshirtImages = {
-      black: { front: "https://live.staticflickr.com/65535/54695438105_cb5e8a0b43_b.jpg", back: "https://live.staticflickr.com/65535/54695350829_a3937db238_b.jpg" },
-      white: { front: "https://live.staticflickr.com/65535/54695415200_07f6d364ff_b.jpg", back: "https://live.staticflickr.com/65535/54695298888_8099b06702_b.jpg" },
-      grey: { front: "https://live.staticflickr.com/65535/54695311163_86dcdb0c50_b.jpg", back: "https://live.staticflickr.com/65535/54695311158_4e3b34a241_b.jpg" }
+      black: { front: "https://i.ibb.co/M6QWh6c/tshirt-black-front.png", back: "https://i.ibb.co/6X2Tqdp/tshirt-black-back.png" },
+      white: { front: "https://i.ibb.co/M6QWh6c/tshirt-white-front.png", back: "https://i.ibb.co/6X2Tqdp/tshirt-white-back.png" },
+      grey: { front: "https://i.ibb.co/M6QWh6c/tshirt-grey-front.png", back: "https://i.ibb.co/6X2Tqdp/tshirt-grey-back.png" }
     };
-
+  
     function updateBaseImage() {
       baseTshirt.src = tshirtImages[colorSelect.value][sideSelect.value];
     }
     colorSelect.addEventListener("change", updateBaseImage);
     sideSelect.addEventListener("change", updateBaseImage);
-
+  
     // Upload design
     uploadInput.addEventListener("change", (e) => {
       const file = e.target.files[0];
@@ -189,161 +201,139 @@
       reader.onload = () => {
         uploadedImage.src = reader.result;
         uploadedImage.style.display = "block";
-        resizeHandle.style.display = "flex";
-        deleteBtn.style.display = "block";
-        uploadedImage.style.width = "180px";
+        uploadedImage.style.top = "120px";
         uploadedImage.style.left = "50%";
-        uploadedImage.style.top = "100px";
-        uploadedImage.style.transform = "translateX(-50%) rotate(0deg)";
-        positionResizeHandle();
+        uploadedImage.style.transform = `translateX(-50%) scale(1) rotate(0deg)`;
+        resizeHandle.style.display = "block";
+        updateResizeHandle();
       };
       reader.readAsDataURL(file);
     });
-
-    // Dragging
-    let isDragging = false, startX, startY, initialX, initialY;
-    uploadedImage.addEventListener("mousedown", (e) => {
-      if (e.target === resizeHandle || e.target === deleteBtn) return;
+  
+    function updateResizeHandle() {
+      resizeHandle.style.top = uploadedImage.offsetTop + uploadedImage.offsetHeight - 12 + "px";
+      resizeHandle.style.left = uploadedImage.offsetLeft + uploadedImage.offsetWidth - 12 + "px";
+    }
+  
+    // Drag - supports both mouse and touch
+    function startDrag(e) {
       isDragging = true;
-      startX = e.clientX;
-      startY = e.clientY;
+      startX = e.clientX || e.touches[0].clientX;
+      startY = e.clientY || e.touches[0].clientY;
       initialX = uploadedImage.offsetLeft;
       initialY = uploadedImage.offsetTop;
-    });
-    document.addEventListener("mousemove", (e) => {
-      if (isDragging) {
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-        uploadedImage.style.left = initialX + dx + "px";
-        uploadedImage.style.top = initialY + dy + "px";
-        positionResizeHandle();
-      }
-    });
-    document.addEventListener("mouseup", () => (isDragging = false));
-
-    // Position Handle & Delete Btn
-    function positionResizeHandle() {
-      resizeHandle.style.left = uploadedImage.offsetLeft + uploadedImage.offsetWidth - 10 + "px";
-      resizeHandle.style.top = uploadedImage.offsetTop + uploadedImage.offsetHeight - 10 + "px";
-      deleteBtn.style.left = uploadedImage.offsetLeft - 12 + "px";
-      deleteBtn.style.top = uploadedImage.offsetTop - 12 + "px";
     }
-
-    // Resize + Rotate
+  
+    function onDrag(e) {
+      if (!isDragging) return;
+      const x = e.clientX || e.touches[0].clientX;
+      const y = e.clientY || e.touches[0].clientY;
+      uploadedImage.style.left = initialX + (x - startX) + "px";
+      uploadedImage.style.top = initialY + (y - startY) + "px";
+      updateResizeHandle();
+    }
+  
+    function endDrag() {
+      isDragging = false;
+    }
+  
+    uploadedImage.addEventListener("mousedown", startDrag);
+    uploadedImage.addEventListener("touchstart", startDrag);
+    document.addEventListener("mousemove", onDrag);
+    document.addEventListener("touchmove", onDrag);
+    document.addEventListener("mouseup", endDrag);
+    document.addEventListener("touchend", endDrag);
+  
+    // Resize + Rotate (using handle) - supports touch
     let isResizing = false;
     resizeHandle.addEventListener("mousedown", (e) => {
       isResizing = true;
+      initialWidth = uploadedImage.offsetWidth;
+      initialHeight = uploadedImage.offsetHeight;
       startX = e.clientX;
       startY = e.clientY;
-      initialWidth = uploadedImage.offsetWidth;
-      initialAngle = getRotationDegrees(uploadedImage);
       e.stopPropagation();
     });
-    document.addEventListener("mousemove", (e) => {
-      if (isResizing) {
-        const dx = e.clientX - startX;
-        if (e.shiftKey) {
-          const centerX = uploadedImage.offsetLeft + uploadedImage.offsetWidth / 2;
-          const centerY = uploadedImage.offsetTop + uploadedImage.offsetHeight / 2;
-          const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-          uploadedImage.style.transform = `translateX(-50%) rotate(${angle}rad)`;
-        } else {
-          uploadedImage.style.width = initialWidth + dx + "px";
-        }
-        positionResizeHandle();
-      }
+    resizeHandle.addEventListener("touchstart", (e) => {
+      isResizing = true;
+      initialWidth = uploadedImage.offsetWidth;
+      initialHeight = uploadedImage.offsetHeight;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      e.stopPropagation();
     });
-    document.addEventListener("mouseup", () => (isResizing = false));
-
-    function getRotationDegrees(el) {
-      const st = window.getComputedStyle(el, null);
-      const tr = st.getPropertyValue("transform");
-      if (tr === "none") return 0;
-      const values = tr.split('(')[1].split(')')[0].split(',');
-      const a = values[0], b = values[1];
-      return Math.round(Math.atan2(b, a) * (180/Math.PI));
+  
+    function onResize(e) {
+      if (!isResizing) return;
+      const x = e.clientX || e.touches[0].clientX;
+      const y = e.clientY || e.touches[0].clientY;
+  
+      const diffX = x - startX;
+      const diffY = y - startY;
+      scale = (initialWidth + diffX) / initialWidth;
+  
+      // rotation based on vertical drag
+      rotation = diffY * 0.5;
+  
+      uploadedImage.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
+      updateResizeHandle();
     }
-
-    // Delete Button
-    deleteBtn.addEventListener("click", () => {
-      uploadedImage.style.display = "none";
-      resizeHandle.style.display = "none";
-      deleteBtn.style.display = "none";
-      uploadInput.value = "";
-    });
-
-    // Reset Button
-    resetBtn.addEventListener("click", () => {
-      uploadedImage.style.display = "none";
-      resizeHandle.style.display = "none";
-      deleteBtn.style.display = "none";
-      uploadInput.value = "";
-    });
-
-    // Save
+  
+    function endResize() {
+      isResizing = false;
+    }
+  
+    document.addEventListener("mousemove", onResize);
+    document.addEventListener("touchmove", onResize);
+    document.addEventListener("mouseup", endResize);
+    document.addEventListener("touchend", endResize);
+  
+    // Save Design & add to cart
     saveBtn.addEventListener("click", () => {
-        if (uploadedImage.style.display === "none") {
-          alert("Please upload your design!");
-          return;
-        }
-      
-        // Create a canvas for final preview
-        const canvas = document.createElement("canvas");
-        canvas.width = 300;
-        canvas.height = 400;
-        const ctx = canvas.getContext("2d");
-      
-        const base = new Image();
-        base.crossOrigin = "anonymous";
-        base.src = baseTshirt.src;
-      
-        base.onload = () => {
-          ctx.drawImage(base, 0, 0, 300, 400);
-      
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.src = uploadedImage.src;
-      
-          img.onload = () => {
-            // Calculate the actual position on the fixed canvas size
-            const containerRect = baseTshirt.getBoundingClientRect();
-            const uploadedRect = uploadedImage.getBoundingClientRect();
-      
-            const scaleX = 300 / containerRect.width;
-            const scaleY = 400 / containerRect.height;
-      
-            const x = (uploadedRect.left - containerRect.left) * scaleX;
-            const y = (uploadedRect.top - containerRect.top) * scaleY;
-            const width = uploadedImage.offsetWidth * scaleX;
-            const height = uploadedImage.offsetHeight * scaleY;
-      
-            ctx.save();
-            // Apply rotation
-            const angle = getRotationDegrees(uploadedImage) * Math.PI / 180;
-            ctx.translate(x + width / 2, y + height / 2);
-            ctx.rotate(angle);
-            ctx.drawImage(img, -width / 2, -height / 2, width, height);
-            ctx.restore();
-      
-            const finalImg = canvas.toDataURL("image/png");
-      
-            // ✅ Save only the final merged preview
-            const cart = JSON.parse(localStorage.getItem("cart")) || [];
-            cart.push({
-              id: Date.now(),
-              name: `Custom T-Shirt (${colorSelect.value} - ${sideSelect.value})`,
-              price: 599,
-              img: finalImg,
-              custom: true
-            });
-            localStorage.setItem("cart", JSON.stringify(cart));
-      
-            // Redirect to cart
-            window.location.href = "cart.html";
-          };
+      if (uploadedImage.style.display === "none") {
+        alert("Please upload your design!");
+        return;
+      }
+  
+      const canvas = document.createElement("canvas");
+      canvas.width = 300;
+      canvas.height = 400;
+      const ctx = canvas.getContext("2d");
+  
+      const base = new Image();
+      base.src = baseTshirt.src;
+      base.onload = () => {
+        ctx.drawImage(base, 0, 0, 300, 400);
+  
+        const img = new Image();
+        img.src = uploadedImage.src;
+        img.onload = () => {
+          const x = uploadedImage.offsetLeft - baseTshirt.offsetLeft;
+          const y = uploadedImage.offsetTop - baseTshirt.offsetTop;
+          ctx.translate(x + img.width / 2, y + img.height / 2);
+          ctx.rotate(rotation * Math.PI / 180);
+          ctx.scale(scale, scale);
+          ctx.drawImage(img, -img.width / 2, -img.height / 2);
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+  
+          const finalImg = canvas.toDataURL("image/png");
+          const cart = JSON.parse(localStorage.getItem("cart")) || [];
+          cart.push({
+            id: Date.now(),
+            name: `Custom T-Shirt (${sideSelect.value})`,
+            price: 599,
+            img: finalImg,
+            custom: true,
+            side: sideSelect.value,
+            color: colorSelect.value,
+            qty: 1
+          });
+          localStorage.setItem("cart", JSON.stringify(cart));
+          window.location.href = "cart.html";
         };
-      });
-      
+      };
+    });
   </script>
+  
 </body>
 </html>
