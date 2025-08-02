@@ -5,6 +5,55 @@
   <title>Admin - Orders | Mythos Arts</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    .order-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    .order-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 10px 0;
+    }
+    .order-images img {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      max-width: 300px;
+      width: 100%;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .order-images img:hover {
+      transform: scale(1.05);
+    }
+    @media (max-width: 600px) {
+      .order-images img {
+        max-width: 100%;
+      }
+    }
+    .btn-action {
+      display: block;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background: #3498db;
+      color: white;
+      margin-top: 8px;
+      cursor: pointer;
+      width: 100%;
+    }
+    .btn-action.paid {
+      background: #27ae60;
+    }
+    .btn-action.remove {
+      background: #e74c3c;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -22,7 +71,7 @@
 
   <script type="module">
     import { auth, db } from './firebase.js';
-    import { collection, getDocs, query, orderBy, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+    import { collection, getDocs, query, orderBy, deleteDoc, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
     import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
 
     const ordersContainer = document.getElementById("ordersContainer");
@@ -42,7 +91,7 @@
 
       const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
       const snapshot = await getDocs(q);
-      const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const orders = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
 
       if (!orders.length) {
         ordersContainer.innerHTML = "<p style='text-align:center;'>No orders yet.</p>";
@@ -51,7 +100,16 @@
 
       orders.forEach(order => {
         const orderCard = document.createElement("div");
-        orderCard.className = "product-card";
+        orderCard.className = "order-card";
+
+        // Generate item images section
+        const imagesHtml = (order.items || []).map(item => `
+          <div>
+            <img src="${item.img}" alt="${item.name}" />
+            <p style="text-align:center;font-size:13px;">${item.name} x${item.qty || 1}</p>
+          </div>
+        `).join("");
+
         orderCard.innerHTML = `
           <h4>User: ${order.email}</h4>
           <p><strong>Name:</strong> ${order.name}</p>
@@ -59,33 +117,50 @@
           <p><strong>City:</strong> ${order.city}, ${order.pincode}</p>
           <p><strong>Address:</strong> ${order.address}</p>
           <p><strong>Total:</strong> ₹${order.total}</p>
-          <p><strong>Status:</strong> ${order.status || 'Pending'}</p>
+          <p><strong>Status:</strong> <span style="color:${order.status === 'Paid' || order.status === 'Confirmed' ? 'green' : 'red'}">${order.status || 'Pending'}</span></p>
           <p><strong>Time:</strong> ${new Date(order.timestamp?.seconds * 1000).toLocaleString()}</p>
-          <button class="btn" onclick='generateInvoice(${JSON.stringify(order)})'>Download Invoice</button>
-          <button class="btn" style="background-color:red; margin-top:10px;" onclick="deleteOrder('${order.id}')">Remove</button>
+          <div class="order-images">${imagesHtml}</div>
+
+          <button class="btn-action paid" onclick="markAsPaid('${order.id}')">Mark as Paid / Confirm</button>
+          <button class="btn-action" onclick='generateInvoice(${JSON.stringify(order)})'>Download Invoice</button>
+          <button class="btn-action remove" onclick="deleteOrder('${order.id}')">Remove</button>
         `;
         ordersContainer.appendChild(orderCard);
       });
     });
 
+    // Update order status to Paid
+    window.markAsPaid = async (orderId) => {
+      try {
+        await updateDoc(doc(db, "orders", orderId), {
+          status: "Confirmed"
+        });
+        alert("Order marked as Paid/Confirmed!");
+        location.reload();
+      } catch (error) {
+        console.error("Error updating order status:", error);
+        alert("Failed to update status");
+      }
+    };
+
     // Generate PDF Invoice
     window.generateInvoice = (order) => {
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
+      const docPdf = new jsPDF();
 
-      doc.setFontSize(16);
-      doc.text("Mythos Arts - Invoice", 20, 20);
+      docPdf.setFontSize(16);
+      docPdf.text("Mythos Arts - Invoice", 20, 20);
 
-      doc.setFontSize(12);
-      doc.text(`Order by: ${order.name}`, 20, 40);
-      doc.text(`Email: ${order.email}`, 20, 50);
-      doc.text(`Phone: ${order.phone}`, 20, 60);
-      doc.text(`Address: ${order.address}, ${order.city} - ${order.pincode}`, 20, 70);
-      doc.text(`Total: ₹${order.total}`, 20, 90);
-      doc.text(`Date: ${new Date(order.timestamp?.seconds * 1000).toLocaleString()}`, 20, 100);
+      docPdf.setFontSize(12);
+      docPdf.text(`Order by: ${order.name}`, 20, 40);
+      docPdf.text(`Email: ${order.email}`, 20, 50);
+      docPdf.text(`Phone: ${order.phone}`, 20, 60);
+      docPdf.text(`Address: ${order.address}, ${order.city} - ${order.pincode}`, 20, 70);
+      docPdf.text(`Total: ₹${order.total}`, 20, 90);
+      docPdf.text(`Date: ${new Date(order.timestamp?.seconds * 1000).toLocaleString()}`, 20, 100);
 
-      doc.text("Thank you for shopping with Mythos Arts!", 20, 130);
-      doc.save(`invoice_${order.name}.pdf`);
+      docPdf.text("Thank you for shopping with Mythos Arts!", 20, 130);
+      docPdf.save(`invoice_${order.name}.pdf`);
     };
 
     // Delete Order from Firestore

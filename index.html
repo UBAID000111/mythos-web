@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mythos Arts - Home</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    .custom-btn {
+      background: #27ae60;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: block;
+      margin: 10px auto;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -14,7 +27,7 @@
     </div>
     <div class="header-icons">
       <button class="btn" id="authBtn">Login</button>
-      <button class="icon-btn" onclick="window.location.href= 'orders.html'">
+      <button class="icon-btn" onclick="window.location.href='orders.html'">
         <img src="https://cdn-icons-png.flaticon.com/128/3502/3502601.png"><span class="badge" id="orders"></span>
       </button>
       <button class="icon-btn" onclick="window.location.href='wishlist.html'">
@@ -25,6 +38,11 @@
       </button>
     </div>
   </header>
+
+  <!-- 🔹 Custom Design Button -->
+  <button class="custom-btn" onclick="window.location.href='custom-design.html'">
+    🎨 Create Your Own T-Shirt
+  </button>
 
   <section class="hero">
     <div class="hero-box">
@@ -47,10 +65,12 @@
     const cartCount = document.getElementById("cartCount");
     const authBtn = document.getElementById("authBtn");
 
+    // Load products from Firestore
     async function loadProducts() {
       grid.innerHTML = "<p>Loading...</p>";
       const snapshot = await getDocs(collection(db, "products"));
       grid.innerHTML = "";
+
       snapshot.forEach(docSnap => {
         const p = docSnap.data();
         grid.innerHTML += `
@@ -59,9 +79,11 @@
             <h4>${p.name} - ₹${p.price}</h4>
           </div>`;
       });
+
       if (!snapshot.size) grid.innerHTML = "<p>No products yet.</p>";
     }
 
+    // Wishlist & Cart counts
     function updateCounts() {
       const wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
       const cart = JSON.parse(localStorage.getItem("cart")) || [];
@@ -71,6 +93,7 @@
       cartCount.innerText = cart.length;
     }
 
+    // Auth button toggle
     onAuthStateChanged(auth, (user) => {
       if (user) {
         authBtn.innerText = `Logout (${user.email.split('@')[0]})`;

@@ -32,6 +32,14 @@
       margin-top: 10px;
       font-weight: bold;
     }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
     button {
       background-color: black;
       color: white;
@@ -42,10 +50,14 @@
       cursor: pointer;
       margin-top: 20px;
     }
-    button:hover {
+    button:disabled {
+      background-color: #888;
+      cursor: not-allowed;
+    }
+    button:hover:enabled {
       background-color: #333;
     }
-    img:active{
+    img:active {
       width: 200px;
     }
   </style>
@@ -53,29 +65,65 @@
 <body>
   <div class="container">
     <button onclick="history.back()" style="
-  margin-bottom: 20px;
-  background-color: #111;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-">
-  ← Back
-</button>
+      margin-bottom: 20px;
+      background-color: #111;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    ">
+      ← Back
+    </button>
 
     <h2>Pay Using UPI</h2>
     <p>Scan the QR or send payment to:</p>
     <img src="https://live.staticflickr.com/65535/54691143032_9abd6fb6dc_c.jpg" width="90px">
     <div class="upi-box">8218167743@pthdfc</div>
     <div class="total">Total: ₹<span id="totalAmount">0</span></div>
-    <button onclick="window.location.href='orders.html'">I Have Paid</button>
+
+    <!-- Reference ID Input -->
+    <input type="text" id="refId" placeholder="Enter UPI Reference ID" />
+
+    <button id="paidBtn" disabled>I Have Paid</button>
   </div>
 
   <script>
     const cart = JSON.parse(localStorage.getItem("cart")) || [];
-    const total = cart.reduce((sum, item) => sum + item.price, 0);
+    const total = cart.reduce((sum, item) => sum + (item.price * (item.qty || 1)), 0);
     document.getElementById("totalAmount").textContent = total;
+
+    const refInput = document.getElementById("refId");
+    const paidBtn = document.getElementById("paidBtn");
+
+    // Enable button only if reference is entered
+    refInput.addEventListener("input", () => {
+      paidBtn.disabled = refInput.value.trim().length < 6; // must have at least 6 chars
+    });
+
+    // Save reference & clear cart on click
+    paidBtn.addEventListener("click", () => {
+      const refId = refInput.value.trim();
+      if (refId.length < 6) {
+        alert("Please enter a valid Reference ID!");
+        return;
+      }
+
+      // Save order details
+      const orders = JSON.parse(localStorage.getItem("orders")) || [];
+      orders.push({
+        id: Date.now(),
+        items: cart,
+        total,
+        reference: refId,
+        status: "Paid"
+      });
+      localStorage.setItem("orders", JSON.stringify(orders));
+
+      // Clear cart and redirect
+      localStorage.removeItem("cart");
+      window.location.href = "orders.html";
+    });
   </script>
 </body>
 </html>

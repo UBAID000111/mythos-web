@@ -5,6 +5,57 @@
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Mythos Arts - Cart</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    .products {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      padding: 10px;
+    }
+    .product-card {
+      width: 230px;
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+      text-align: center;
+    }
+    .product-card img {
+      max-width: 100%;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+    .empty-cart {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-size: 16px;
+    }
+    .qty-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+    }
+    .qty-controls button {
+      background: #444;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 18px;
+    }
+    .qty-controls span {
+      font-size: 16px;
+      min-width: 20px;
+      display: inline-block;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -32,6 +83,7 @@
   <h3 style="text-align:center;" id="totalPrice"></h3>
   <div style="text-align:center; padding:10px;">
     <button class="btn" onclick="checkout()">Checkout</button>
+    <button class="btn" style="background:#e74c3c;" onclick="clearCart()">Clear Cart</button>
   </div>
 
   <footer>&copy; 2025 Mythos Arts</footer>
@@ -62,30 +114,52 @@
       wishlistCount.style.display = wishlist.length ? "inline-block" : "none";
       cartCount.style.display = cart.length ? "inline-block" : "none";
       wishlistCount.innerText = wishlist.length;
-      cartCount.innerText = cart.length;
+      cartCount.innerText = cart.reduce((sum, item) => sum + (item.qty || 1), 0);
     }
 
     function loadCart() {
       const cart = JSON.parse(localStorage.getItem("cart")) || [];
       if (!cart.length) {
-        cartContainer.innerHTML = "<p style='text-align:center;'>Your cart is empty</p>";
+        cartContainer.innerHTML = "<p class='empty-cart'>Your cart is empty 🛒</p>";
         totalPriceEl.innerText = "";
         return;
       }
 
       cartContainer.innerHTML = "";
       let total = 0;
+
       cart.forEach((p, index) => {
-        total += p.price;
+        const qty = p.qty || 1;
+        total += p.price * qty;
+
         cartContainer.innerHTML += `
           <div class="product-card">
             <img src="${p.img}" alt="${p.name}">
-            <h4>${p.name} (${p.size}) - ₹${p.price}</h4>
+            <h4>${p.name}</h4>
+            <div class="qty-controls">
+              <button onclick="changeQty(${index}, -1)">-</button>
+              <span>${qty}</span>
+              <button onclick="changeQty(${index}, 1)">+</button>
+            </div>
+            <p>₹${p.price * qty}</p>
             <button class="btn" onclick="removeItem(${index})">Remove</button>
           </div>`;
       });
+
       totalPriceEl.innerText = `Total: ₹${total}`;
     }
+
+    window.changeQty = (index, delta) => {
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+      if (!cart[index]) return;
+
+      cart[index].qty = (cart[index].qty || 1) + delta;
+      if (cart[index].qty <= 0) cart[index].qty = 1;
+
+      localStorage.setItem("cart", JSON.stringify(cart));
+      updateCounts();
+      loadCart();
+    };
 
     window.removeItem = (index) => {
       const cart = JSON.parse(localStorage.getItem("cart")) || [];
@@ -93,9 +167,16 @@
       localStorage.setItem("cart", JSON.stringify(cart));
       updateCounts();
       loadCart();
-    }
+    };
 
-    // ✅ Redirect to orderinfo.html with total stored
+    window.clearCart = () => {
+      if (confirm("Are you sure you want to clear your cart?")) {
+        localStorage.removeItem("cart");
+        updateCounts();
+        loadCart();
+      }
+    };
+
     window.checkout = () => {
       const cart = JSON.parse(localStorage.getItem("cart")) || [];
       if (!cart.length) {
@@ -103,11 +184,11 @@
         return;
       }
 
-      const total = cart.reduce((sum, item) => sum + item.price, 0);
+      const total = cart.reduce((sum, item) => sum + (item.price * (item.qty || 1)), 0);
       localStorage.setItem("cartTotal", total);
 
       window.location.href = "orderinfo.html";
-    }
+    };
 
     updateCounts();
     loadCart();
