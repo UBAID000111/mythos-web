@@ -9,7 +9,7 @@
     header h2 { margin-bottom: 10px; color: #222; font-size: 22px; }
 
     .designer-box {
-      max-width: 380px;
+      max-width: 600px;
       margin: auto;
       background: #fff;
       padding: 15px;
@@ -19,10 +19,17 @@
 
     .tshirt-container {
       position: relative;
-      width: 300px;
-      height: 400px;
+      width: 400px;
+      height: 500px;
       margin: 15px auto;
       touch-action: none;
+    }
+
+    @media(max-width:768px){
+      .tshirt-container{
+        width: 300px;
+        height: 400px;
+      }
     }
 
     .base-tshirt {
@@ -32,7 +39,7 @@
 
     #uploadedImage {
       position: absolute;
-      top: 100px;
+      top: 120px;
       left: 50%;
       transform: translateX(-50%) rotate(0deg);
       max-width: 180px;
@@ -40,7 +47,6 @@
       display: none;
     }
 
-    /* Resize/Rotate handle */
     .resize-handle {
       position: absolute;
       width: 18px;
@@ -50,31 +56,12 @@
       background: white;
       border: 1px solid #333;
       border-radius: 3px;
-      display: flex;
+      display: none;
       align-items: center;
       justify-content: center;
       cursor: nwse-resize;
       font-size: 12px;
       font-weight: bold;
-      display: none;
-      user-select: none;
-    }
-
-    /* Delete button */
-    .delete-btn {
-      position: absolute;
-      top: -12px;
-      left: -12px;
-      width: 20px;
-      height: 20px;
-      background: #e74c3c;
-      color: white;
-      font-size: 14px;
-      line-height: 20px;
-      border-radius: 50%;
-      text-align: center;
-      cursor: pointer;
-      display: none;
       user-select: none;
     }
 
@@ -148,7 +135,6 @@
       <img id="baseTshirt" class="base-tshirt" src="https://live.staticflickr.com/65535/54695438105_cb5e8a0b43_b.jpg" />
       <img id="uploadedImage" />
       <div class="resize-handle" id="resizeHandle">↔</div>
-      <div class="delete-btn" id="deleteBtn">✕</div>
     </div>
 
     <button class="btn-main" id="saveBtn">✅ Save Design & Add to Cart (₹599)</button>
@@ -163,37 +149,22 @@
     const baseTshirt = document.getElementById("baseTshirt");
     const uploadInput = document.getElementById("uploadInput");
     const uploadedImage = document.getElementById("uploadedImage");
+    const resizeHandle = document.getElementById("resizeHandle");
     const saveBtn = document.getElementById("saveBtn");
-  
-    // Resizer & rotation handle
-    const resizeHandle = document.createElement("div");
-    resizeHandle.style.width = "18px";
-    resizeHandle.style.height = "18px";
-    resizeHandle.style.background = "#27ae60";
-    resizeHandle.style.borderRadius = "50%";
-    resizeHandle.style.position = "absolute";
-    resizeHandle.style.bottom = "-12px";
-    resizeHandle.style.right = "-12px";
-    resizeHandle.style.cursor = "nwse-resize";
-    resizeHandle.style.display = "none";
-    document.querySelector(".tshirt-container").appendChild(resizeHandle);
-  
-    let scale = 1, rotation = 0, isDragging = false;
-    let startX, startY, initialX, initialY, initialWidth, initialHeight;
-  
+    const resetBtn = document.getElementById("resetBtn");
+
     const tshirtImages = {
-      black: { front: "https://i.ibb.co/M6QWh6c/tshirt-black-front.png", back: "https://i.ibb.co/6X2Tqdp/tshirt-black-back.png" },
-      white: { front: "https://i.ibb.co/M6QWh6c/tshirt-white-front.png", back: "https://i.ibb.co/6X2Tqdp/tshirt-white-back.png" },
-      grey: { front: "https://i.ibb.co/M6QWh6c/tshirt-grey-front.png", back: "https://i.ibb.co/6X2Tqdp/tshirt-grey-back.png" }
+      black: { front: "https://live.staticflickr.com/65535/54695438105_cb5e8a0b43_b.jpg", back: "https://live.staticflickr.com/65535/54695350829_a3937db238_b.jpg" },
+      white: { front: "https://live.staticflickr.com/65535/54695415200_07f6d364ff_b.jpg", back: "https://live.staticflickr.com/65535/54695298888_8099b06702_b.jpg" },
+      grey: { front: "https://live.staticflickr.com/65535/54695311163_86dcdb0c50_b.jpg", back: "https://live.staticflickr.com/65535/54695311158_4e3b34a241_b.jpg" }
     };
-  
+
     function updateBaseImage() {
       baseTshirt.src = tshirtImages[colorSelect.value][sideSelect.value];
     }
     colorSelect.addEventListener("change", updateBaseImage);
     sideSelect.addEventListener("change", updateBaseImage);
-  
-    // Upload design
+
     uploadInput.addEventListener("change", (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -203,119 +174,114 @@
         uploadedImage.style.display = "block";
         uploadedImage.style.top = "120px";
         uploadedImage.style.left = "50%";
-        uploadedImage.style.transform = `translateX(-50%) scale(1) rotate(0deg)`;
+        uploadedImage.style.transform = "translateX(-50%) scale(1) rotate(0deg)";
         resizeHandle.style.display = "block";
-        updateResizeHandle();
+        positionResizeHandle();
       };
       reader.readAsDataURL(file);
     });
-  
-    function updateResizeHandle() {
+
+    function positionResizeHandle() {
       resizeHandle.style.top = uploadedImage.offsetTop + uploadedImage.offsetHeight - 12 + "px";
       resizeHandle.style.left = uploadedImage.offsetLeft + uploadedImage.offsetWidth - 12 + "px";
     }
-  
-    // Drag - supports both mouse and touch
-    function startDrag(e) {
+
+    // Dragging
+    let isDragging = false, startX, startY, initialX, initialY;
+    uploadedImage.addEventListener("mousedown", startDrag);
+    uploadedImage.addEventListener("touchstart", startDrag);
+    function startDrag(e){
       isDragging = true;
       startX = e.clientX || e.touches[0].clientX;
       startY = e.clientY || e.touches[0].clientY;
       initialX = uploadedImage.offsetLeft;
       initialY = uploadedImage.offsetTop;
     }
-  
-    function onDrag(e) {
-      if (!isDragging) return;
+    document.addEventListener("mousemove", onDrag);
+    document.addEventListener("touchmove", onDrag);
+    function onDrag(e){
+      if(!isDragging) return;
       const x = e.clientX || e.touches[0].clientX;
       const y = e.clientY || e.touches[0].clientY;
       uploadedImage.style.left = initialX + (x - startX) + "px";
       uploadedImage.style.top = initialY + (y - startY) + "px";
-      updateResizeHandle();
+      positionResizeHandle();
     }
-  
-    function endDrag() {
-      isDragging = false;
-    }
-  
-    uploadedImage.addEventListener("mousedown", startDrag);
-    uploadedImage.addEventListener("touchstart", startDrag);
-    document.addEventListener("mousemove", onDrag);
-    document.addEventListener("touchmove", onDrag);
-    document.addEventListener("mouseup", endDrag);
-    document.addEventListener("touchend", endDrag);
-  
-    // Resize + Rotate (using handle) - supports touch
-    let isResizing = false;
-    resizeHandle.addEventListener("mousedown", (e) => {
+    document.addEventListener("mouseup", ()=> isDragging=false);
+    document.addEventListener("touchend", ()=> isDragging=false);
+
+    // Resize
+    let isResizing = false, initialWidth, initialHeight, scale = 1, rotation = 0;
+    resizeHandle.addEventListener("mousedown", startResize);
+    resizeHandle.addEventListener("touchstart", startResize);
+    function startResize(e){
       isResizing = true;
       initialWidth = uploadedImage.offsetWidth;
       initialHeight = uploadedImage.offsetHeight;
-      startX = e.clientX;
-      startY = e.clientY;
+      startX = e.clientX || e.touches[0].clientX;
+      startY = e.clientY || e.touches[0].clientY;
       e.stopPropagation();
-    });
-    resizeHandle.addEventListener("touchstart", (e) => {
-      isResizing = true;
-      initialWidth = uploadedImage.offsetWidth;
-      initialHeight = uploadedImage.offsetHeight;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      e.stopPropagation();
-    });
-  
-    function onResize(e) {
-      if (!isResizing) return;
+    }
+    document.addEventListener("mousemove", onResize);
+    document.addEventListener("touchmove", onResize);
+    function onResize(e){
+      if(!isResizing) return;
       const x = e.clientX || e.touches[0].clientX;
       const y = e.clientY || e.touches[0].clientY;
-  
       const diffX = x - startX;
       const diffY = y - startY;
       scale = (initialWidth + diffX) / initialWidth;
-  
-      // rotation based on vertical drag
       rotation = diffY * 0.5;
-  
-      uploadedImage.style.transform = `scale(${scale}) rotate(${rotation}deg)`;
-      updateResizeHandle();
+      uploadedImage.style.transform = `translateX(-50%) scale(${scale}) rotate(${rotation}deg)`;
+      positionResizeHandle();
     }
-  
-    function endResize() {
-      isResizing = false;
-    }
-  
-    document.addEventListener("mousemove", onResize);
-    document.addEventListener("touchmove", onResize);
-    document.addEventListener("mouseup", endResize);
-    document.addEventListener("touchend", endResize);
-  
-    // Save Design & add to cart
-    saveBtn.addEventListener("click", () => {
-      if (uploadedImage.style.display === "none") {
+    document.addEventListener("mouseup", ()=> isResizing=false);
+    document.addEventListener("touchend", ()=> isResizing=false);
+
+    resetBtn.addEventListener("click", ()=>{
+      uploadedImage.style.display = "none";
+      resizeHandle.style.display = "none";
+      uploadInput.value = "";
+    });
+
+    saveBtn.addEventListener("click", ()=>{
+      if(uploadedImage.style.display === "none"){
         alert("Please upload your design!");
         return;
       }
-  
+      // Generate final merged canvas
       const canvas = document.createElement("canvas");
-      canvas.width = 300;
-      canvas.height = 400;
+      canvas.width = baseTshirt.offsetWidth;
+      canvas.height = baseTshirt.offsetHeight;
       const ctx = canvas.getContext("2d");
-  
+
       const base = new Image();
+      base.crossOrigin = "anonymous";
       base.src = baseTshirt.src;
-      base.onload = () => {
-        ctx.drawImage(base, 0, 0, 300, 400);
-  
+      base.onload = ()=>{
+        ctx.drawImage(base, 0, 0, canvas.width, canvas.height);
         const img = new Image();
         img.src = uploadedImage.src;
-        img.onload = () => {
-          const x = uploadedImage.offsetLeft - baseTshirt.offsetLeft;
-          const y = uploadedImage.offsetTop - baseTshirt.offsetTop;
-          ctx.translate(x + img.width / 2, y + img.height / 2);
+        img.onload = ()=>{
+          
+          // Get accurate relative position using bounding boxes
+          const tshirtRect = baseTshirt.getBoundingClientRect();
+          const designRect = uploadedImage.getBoundingClientRect();
+
+          const scaleX = canvas.width / tshirtRect.width;
+          const scaleY = canvas.height / tshirtRect.height;
+
+          const drawX = (designRect.left - tshirtRect.left) * scaleX;
+          const drawY = (designRect.top - tshirtRect.top) * scaleY;
+          const drawWidth = designRect.width * scaleX;
+          const drawHeight = designRect.height * scaleY;
+
+          ctx.translate(drawX + drawWidth / 2, drawY + drawHeight / 2);
           ctx.rotate(rotation * Math.PI / 180);
           ctx.scale(scale, scale);
-          ctx.drawImage(img, -img.width / 2, -img.height / 2);
+          ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
           ctx.setTransform(1, 0, 0, 1, 0, 0);
-  
+
           const finalImg = canvas.toDataURL("image/png");
           const cart = JSON.parse(localStorage.getItem("cart")) || [];
           cart.push({
@@ -323,17 +289,13 @@
             name: `Custom T-Shirt (${sideSelect.value})`,
             price: 599,
             img: finalImg,
-            custom: true,
-            side: sideSelect.value,
-            color: colorSelect.value,
             qty: 1
           });
           localStorage.setItem("cart", JSON.stringify(cart));
           window.location.href = "cart.html";
-        };
-      };
+        }
+      }
     });
   </script>
-  
 </body>
 </html>
